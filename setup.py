@@ -1,8 +1,17 @@
 from setuptools import setup, find_packages
 
+_NAME = 'pydecking'
+
+import versioneer
+versioneer.versionfile_source = 'decking/_version.py'
+versioneer.versionfile_build = 'decking/_version.py'
+versioneer.tag_prefix = ''
+versioneer.parentdir_prefix = '{}-'.format(_NAME)
+
 setup(
-    name='pydecking',
-    version=0.01,
+    name=_NAME,
+    version=versioneer.get_version(),
+    cmdclass=versioneer.get_cmdclass(),
     description='An implementation of decking in Python',
     long_description=open('README.md').read(),
     author='Paul Weaver',
@@ -19,12 +28,12 @@ setup(
         'dev': (
             'unittest2',
             'nose',
-            'coverage'
+            'coverage',
         ),
     },
     entry_points={
         "console_scripts": (
             "decking = decking.main:main"
         )
-    }
+    },
 )

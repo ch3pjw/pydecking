@@ -16,14 +16,15 @@ setup(
         'blessings'
     ),
     extras_require={
-        'test': (
-            'unittest2'
-        )
+        'dev': (
+            'unittest2',
+            'nose',
+            'coverage'
+        ),
     },
     entry_points={
         "console_scripts": (
             "decking = decking.main:main"
         )
     }
-
 )

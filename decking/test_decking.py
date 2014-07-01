@@ -1,4 +1,4 @@
-from unittest2 import TestCase
+from unittest import TestCase
 from mock import MagicMock, patch
 import docker
 

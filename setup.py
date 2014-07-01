@@ -9,5 +9,21 @@ setup(
     author_email='paul@ruthorn.co.uk',
     url='https://github.com/ch3pjw/pydecking',
     packages=find_packages(),
-    install_requires=('PyYaml', 'docker-py'),
+    install_requires=(
+        'PyYaml',
+        'docker-py',
+        'docopt',
+        'blessings'
+    ),
+    extras_require={
+        'test': (
+            'unittest2'
+        )
+    },
+    entry_points={
+        "console_scripts": (
+            "decking = decking.main:main"
+        )
+    }
+
 )

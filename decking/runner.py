@@ -1,8 +1,6 @@
-#!/usr/bin/env python
+
 from __future__ import print_function
 import time
-import yaml
-import docker
 
 
 class DeckingRunner(object):
@@ -103,12 +101,4 @@ class DeckingRunner(object):
         return running
 
 
-if __name__ == '__main__':
-    with open('decking.json') as f:
-        decking_config = yaml.load(f)
 
-    docker_client = docker.Client(
-        base_url='unix://var/run/docker.sock', version='0.9.1', timeout=10)
-    runner = DeckingRunner(decking_config, docker_client)
-    runner.create_all()
-    runner.run_all()

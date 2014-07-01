@@ -62,7 +62,6 @@ setup(
     ),
     extras_require={
         'dev': (
-            'unittest2',
             'nose',
             'coverage',
         ),

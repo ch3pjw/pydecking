@@ -10,4 +10,5 @@ setup(
     url='https://github.com/ch3pjw/pydecking',
     packages=find_packages(),
     install_requires=('PyYaml', 'docker-py'),
+    extras_require={'dev': ['nose', 'coverage']}
 )

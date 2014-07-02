@@ -115,7 +115,7 @@ class TestDeckingRunner(TestCase):
         }
         runner = DeckingRunner(decking_config, self.mock_docker_client)
         self.assertRaisesRegexp(
-            RuntimeError, 'dependencies', runner.start, 'dojo')
+            RuntimeError, 'dependencies', runner.start_cluster, 'dojo')
 
     def _test_pull(self, registry):
         remote_image_path = image_path = 'some_repo/zen'

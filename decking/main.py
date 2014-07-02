@@ -90,15 +90,14 @@ def main():
 
     try:
         docker_client = docker.Client(
-            base_url='unix://var/run/docker.sock', version='0.9.1', timeout=10)
+            base_url='unix://var/run/docker.sock', version='1.10', timeout=10)
         runner = DeckingRunner(_read_config(opts), docker_client)
 
-        if opts["build"]:
-            raise NotImplementedError(
-                "This operation hasn't been implemented yet")
+        if opts['build']:
+            runner.build(opts['IMAGE'])
         else:
-            command, cluster = opts["COMMAND"], opts["CLUSTER"]
-            if command in ("create", "start"):
+            command, cluster = opts['OPERATION'], opts['CLUSTER']
+            if command in ('build', 'create', 'start'):
                 getattr(runner, command)(cluster)
             else:
                 raise NotImplementedError(

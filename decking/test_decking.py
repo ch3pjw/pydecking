@@ -34,7 +34,7 @@ class TestDeckingRunner(TestCase):
         runner = DeckingRunner(self.decking_config, self.mock_docker_client)
         self.mock_docker_client.create_container.side_effect = [
             self.container_info_1, self.container_info_2]
-        created = runner.create_all()
+        created = runner.create()
         self.assertEqual(created, ['bob', 'alice'])
         self.assertEqual(
             self.decking_config['containers']['bob']['instance'],
@@ -45,12 +45,12 @@ class TestDeckingRunner(TestCase):
 
     def test_run_all(self, sleep_mock):
         runner = DeckingRunner(self.decking_config, self.mock_docker_client)
-        self.assertRaisesRegexp(RuntimeError, 'Must create', runner.run_all)
+        self.assertRaisesRegexp(RuntimeError, 'Must create', runner.start)
         self.decking_config['containers']['bob']['instance'] = (
             self.container_info_1)
         self.decking_config['containers']['alice']['instance'] = (
             self.container_info_2)
-        runner.run_all()
+        runner.start()
 
     def test_bad_depenencies(self, sleep_mock):
         decking_config = {
@@ -62,7 +62,7 @@ class TestDeckingRunner(TestCase):
             }
         }
         runner = DeckingRunner(decking_config, self.mock_docker_client)
-        self.assertRaisesRegexp(RuntimeError, 'dependencies', runner.run_all)
+        self.assertRaisesRegexp(RuntimeError, 'dependencies', runner.start)
         decking_config = {
             'containers': {
                 'zen': {
@@ -76,4 +76,4 @@ class TestDeckingRunner(TestCase):
             }
         }
         runner = DeckingRunner(decking_config, self.mock_docker_client)
-        self.assertRaisesRegexp(RuntimeError, 'dependencies', runner.run_all)
+        self.assertRaisesRegexp(RuntimeError, 'dependencies', runner.start)

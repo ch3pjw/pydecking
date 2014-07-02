@@ -48,7 +48,8 @@ class DeckingRunner(object):
         image = container_spec['image']
         environment = container_spec.get('env', [])
         port_bindings = self._uncolon_mapping(container_spec.get('port', []))
-        print('creating container {!r}... '.format(name), end='')
+        print('creating container {!r}... '
+              ''.format(name), end='')
         container_info = self.client.create_container(
             image,
             name=name,
@@ -77,24 +78,25 @@ class DeckingRunner(object):
             links=links,
             port_bindings=port_bindings)
 
-    def create_all(self):
+    def create(self, cluster):
         container_specs = self.decking_config['containers']
         created = []
         for name in self._containter_names_by_dependency(container_specs):
-            if name:
+            if name and name in self.decking_config['clusters'][cluster]:
                 container_spec = container_specs[name]
                 self.create_container(container_spec, name)
                 created.append(name)
         return created
 
-    def run_all(self):
+    def start(self, cluster):
         container_specs = self.decking_config['containers']
         running = []
         for name in self._containter_names_by_dependency(container_specs):
             if name:
-                container_spec = container_specs[name]
-                self.run_container(container_spec, name)
-                running.append(name)
+                if name in self.decking_config['clusters'][cluster]:
+                    container_spec = container_specs[name]
+                    self.run_container(container_spec, name)
+                    running.append(name)
             else:
                 # FIXME: make some way to tell if container is alive
                 time.sleep(6)

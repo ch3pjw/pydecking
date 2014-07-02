@@ -4,15 +4,15 @@ Usage:
     decking build IMAGE [--config=CONFIG] [--no-cache]
     decking OPERATION CLUSTER [--config=CONFIG]
 
-Build parameter:
+Image build parameter:
     IMAGE           The image name found in the decking definition file.
-                    When provided with the literal string 'all' this simply
+                    When provided with the literal string 'all', this simply
                     iterates through each key of the images object and builds
                     them in turn.
 
     --no-cache      Prevents Docker using cached layers during the build.
 Cluster operations:
-    CLUSTER         The cluster as defined in the cluster configuration file
+    CLUSTER         The cluster as defined in the decking definition file
                     to perform the command on.
     OPERATION       create - Builds containers for a given cluster as well
                         as any implicit or explicit dependencies. Optionally
@@ -44,7 +44,7 @@ Cluster operations:
                         container is restarted.
 
 Global options:
-    --config=CONFIG Define the file to read the cluster configuration
+    --config=CONFIG Define the file to read the decking definition
                     from. JSON and YAML formats are supported.
                     [default: decking.json]
 
@@ -97,10 +97,9 @@ def main():
             raise NotImplementedError(
                 "This operation hasn't been implemented yet")
         else:
-            if opts["COMMAND"] == "create":
-                runner.create_all()
-            elif opts["COMMAND"] == "start":
-                runner.run_all()
+            command, cluster = opts["COMMAND"], opts["CLUSTER"]
+            if command in ("create", "start"):
+                getattr(runner, command)(cluster)
             else:
                 raise NotImplementedError(
                     "This operation hasn't been implemented yet")

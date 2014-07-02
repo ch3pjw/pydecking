@@ -19,6 +19,9 @@ class TestDeckingRunner(TestCase):
                     'image': 'repo/bob',
                     'env': ['A=b']
                 }
+            },
+            'clusters': {
+                'office': ['alice', 'bob']
             }
         }
         self.mock_docker_client = MagicMock(spec=docker.Client, instance=True)
@@ -34,7 +37,7 @@ class TestDeckingRunner(TestCase):
         runner = DeckingRunner(self.decking_config, self.mock_docker_client)
         self.mock_docker_client.create_container.side_effect = [
             self.container_info_1, self.container_info_2]
-        created = runner.create()
+        created = runner.create('office')
         self.assertEqual(created, ['bob', 'alice'])
         self.assertEqual(
             self.decking_config['containers']['bob']['instance'],
@@ -45,24 +48,29 @@ class TestDeckingRunner(TestCase):
 
     def test_run_all(self, sleep_mock):
         runner = DeckingRunner(self.decking_config, self.mock_docker_client)
-        self.assertRaisesRegexp(RuntimeError, 'Must create', runner.start)
+        self.assertRaisesRegexp(
+            RuntimeError, 'Must create', runner.start, 'office')
         self.decking_config['containers']['bob']['instance'] = (
             self.container_info_1)
         self.decking_config['containers']['alice']['instance'] = (
             self.container_info_2)
-        runner.start()
+        runner.start('office')
 
-    def test_bad_depenencies(self, sleep_mock):
+    def test_bad_dependencies(self, sleep_mock):
         decking_config = {
             'containers': {
                 'zen': {
                     'image': 'repo/zen',
                     'dependencies': ['zen:zen_alias']
                 }
+            },
+            'clusters': {
+                'dojo': ['zen']
             }
         }
         runner = DeckingRunner(decking_config, self.mock_docker_client)
-        self.assertRaisesRegexp(RuntimeError, 'dependencies', runner.start)
+        self.assertRaisesRegexp(
+            RuntimeError, 'dependencies', runner.start, 'dojo')
         decking_config = {
             'containers': {
                 'zen': {
@@ -73,7 +81,11 @@ class TestDeckingRunner(TestCase):
                     'image': 'repo/yen',
                     'dependencies': ['zen:zen_alias']
                 }
+            },
+            'clusters': {
+                'dojo': ['zen', 'yen']
             }
         }
         runner = DeckingRunner(decking_config, self.mock_docker_client)
-        self.assertRaisesRegexp(RuntimeError, 'dependencies', runner.start)
+        self.assertRaisesRegexp(
+            RuntimeError, 'dependencies', runner.start, 'dojo')

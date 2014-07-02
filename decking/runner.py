@@ -68,7 +68,7 @@ class DeckingRunner(object):
 
     def build_image(self, tag, image_spec):
         print('building image {!r}...'.format(tag))
-        stream = self.client.build(image_spec['path'], tag=tag)
+        stream = self.client.build(image_spec['path'], tag=tag, rm=True)
         for line in stream:
             line = json.loads(line)
             print(line['stream'].strip())

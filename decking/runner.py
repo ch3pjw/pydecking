@@ -1,5 +1,8 @@
 from __future__ import print_function
+import os
 import time
+import json
+from copy import deepcopy
 
 
 class DeckingRunner(object):
@@ -12,8 +15,46 @@ class DeckingRunner(object):
     All extra kwargs are passed to the docker python client.
     '''
     def __init__(self, decking_config, docker_client):
-        self.container_specs = decking_config['containers']
+        self.image_specs = self._parse_image_specs(
+            decking_config.get('images', {}))
+        self.container_specs = self._parse_container_specs(
+            decking_config['containers'])
         self.client = docker_client
+
+    def _parse_image_specs(self, image_specs):
+        '''Translates the image specifications in the decking.json file into an
+        internal representation that has more detail
+        '''
+        result = {}
+        for tag, path in image_specs.items():
+            result[tag] = {'path': path}
+            with open(os.path.join(path, 'Dockerfile')) as f:
+                dependency = self._parse_dockerfile(f)
+            if dependency in image_specs:
+                dependencies = [dependency]
+            else:
+                # Ignore external dependencies
+                dependencies = []
+            result[tag]['dependencies'] = dependencies
+        return result
+
+    @staticmethod
+    def _parse_dockerfile(docker_file):
+        for line in docker_file:
+            if line.upper().startswith('FROM'):
+                return line.split(None, 1)[1].strip()
+
+    def _parse_container_specs(self, container_specs):
+        '''Translates the container specifications in the decking.json file
+        into an internal representation that has more detail.
+        '''
+        result = {}
+        for name, spec in container_specs.items():
+            result[name] = deepcopy(spec)
+            links = self._uncolon_mapping(spec.get('dependencies', []))
+            result[name]['links'] = links
+            result[name]['dependencies'] = list(links.keys())
+        return result
 
     @staticmethod
     def _build_volume_binding(mount_spec):
@@ -24,8 +65,12 @@ class DeckingRunner(object):
     def _uncolon_mapping(mapping_as_sequence):
         return dict(item.split(':') for item in mapping_as_sequence)
 
-    def _containter_names_by_dependency(self, container_specs):
-        to_process = set(container_specs.keys())
+    def build_image(self, tag, image_spec):
+        print('building image {!r}...'.format(tag))
+        stream = self.client.build(image_spec['path'], tag=tag)
+        for line in stream:
+            line = json.loads(line)
+            print(line['stream'].strip())
 
     def _names_by_dependency(self, specs):
         to_process = set(specs.keys())
@@ -34,8 +79,7 @@ class DeckingRunner(object):
             pending = set()
             for name in list(to_process):
                 dependencies = specs[name].get('dependencies', [])
-                links = self._uncolon_mapping(dependencies)
-                if all(link in processed for link in links):
+                if all(dep in processed for dep in dependencies):
                     to_process.remove(name)
                     pending.add(name)
                     yield name
@@ -62,8 +106,7 @@ class DeckingRunner(object):
         return container_info
 
     def run_container(self, name, container_spec):
-        dependencies = container_spec.get('dependencies', [])
-        links = self._uncolon_mapping(dependencies)
+        links = container_spec.get('links', [])
         volume_bindings = dict(
             self._build_volume_binding(mount_entry)
             for mount_entry in container_spec.get('mount', []))
@@ -89,6 +132,10 @@ class DeckingRunner(object):
             else:
                 else_()
         return processed
+
+    def build_all(self):
+        return self._dependency_aware_map(
+            self.build_image, self.image_specs)
 
     def create_all(self):
         return self._dependency_aware_map(

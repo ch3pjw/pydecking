@@ -67,6 +67,8 @@ def main():
                 raise NotImplementedError(
                     "Creation is currently only supported for 'all' images")
             runner.create_all()
+        elif opts["build"]:
+            runner.build_all()
         else:
             raise NotImplementedError(
                 "This operation hasn't been implemented yet")

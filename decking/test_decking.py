@@ -98,3 +98,36 @@ class TestDeckingRunner(TestCase):
         runner = DeckingRunner(decking_config, self.mock_docker_client)
         self.assertRaisesRegexp(
             RuntimeError, 'dependencies', runner.start, 'dojo')
+
+    def _test_pull(self, registry):
+        remote_image_path = image_path = 'some_repo/zen'
+        if registry:
+            remote_image_path = '{}/{}'.format(registry, image_path)
+
+        decking_config = {
+            'containers': {
+                'zen': {
+                    'image': image_path,
+                }
+            },
+            'clusters': {
+                'dojo': ['zen']
+            }
+        }
+        runner = DeckingRunner(decking_config, self.mock_docker_client)
+        runner.pull(registry)
+
+        self.mock_docker_client.pull.assert_called_once_with(remote_image_path)
+        if registry:
+            self.mock_docker_client.tag.assert_called_once_with(remote_image_path, image_path)
+            self.mock_docker_client.remove_image.assert_called_once_with(remote_image_path)
+        else:
+            self.assertFalse(self.mock_docker_client.tag.called)
+            self.assertFalse(self.mock_docker_client.remove_image.called)
+
+    def test_pull_repo(self, sleep_mock):
+        self._test_pull('foobar')
+
+    def test_pull_no_repo(self, sleep_mock):
+        self._test_pull(None)
+        

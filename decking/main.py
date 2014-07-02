@@ -1,6 +1,7 @@
 """
 Usage:
     decking help
+    decking pull [REGISTRY] [--config=CONFIG]
     decking build IMAGE [--config=CONFIG] [--no-cache]
     decking OPERATION CLUSTER [--config=CONFIG]
 
@@ -197,6 +198,8 @@ def main():
         if opts["build"]:
             raise NotImplementedError(
                 "This operation hasn't been implemented yet")
+        if opts["pull"]:
+            runner.pull(opts.get('REGISTRY'))
         else:
             command, cluster = opts["COMMAND"], opts["CLUSTER"]
             if command in ("create", "start"):

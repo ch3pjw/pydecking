@@ -76,50 +76,32 @@ def _read_config(opts):
         'clusters': {
             'type': 'dict',
             'keyschema': {
-                'type': 'dict',
-                'schema': {
-                    'group': {
-                        'type': 'string'
-                    },
-                    'containers': {
-                        'type': 'list',
-                        'schema': {
-                            'type': 'string'
-                        }
-                    }
-                }
+                'type': 'list',
+                'schema': {'type': 'string'}
+# FIXME add support for more complex grouping functionality
+#                'schema': {
+#                    'group': {
+#                        'type': 'string'
+#                    },
+#                    'containers': {
+#                        'type': 'list',
+#                        'schema': {
+#                            'type': 'string'
+#                        }
+#                    }
+#                }
             }
         },
         'containers': {
             'type': 'dict',
             'required': True,
             'keyschema': {
-                'image': {
-                    'type': 'string',
-                    'required': True
-                },
-                'port': {
-                    'type': 'list',
-                    'schema': {'type': 'string'}
-                },
-                'env': {
-                    'type': 'list',
-                    'schema': {'type': 'string'}
-                },
-                'dependencies': {
-                    'type': 'list',
-                    'schema': {'type': 'string'}
-                },
-                'mount': {
-                    'type': 'list',
-                    'schema': {'type': 'string'}
-                }
-            }
-        },
-        'groups': {
-            'type': 'dict',
-            'keyschema': {
-                'options': {
+                'type': 'dict',
+                'schema': {
+                    'image': {
+                        'type': 'string',
+                        'required': True
+                    },
                     'port': {
                         'type': 'list',
                         'schema': {'type': 'string'}
@@ -136,30 +118,54 @@ def _read_config(opts):
                         'type': 'list',
                         'schema': {'type': 'string'}
                     }
-                },
-                'containers': {
-                    'type': 'dict',
-                    'keyschema': {
-                        'port': {
-                            'type': 'list',
-                            'schema': {'type': 'string'}
-                        },
-                        'env': {
-                            'type': 'list',
-                            'schema': {'type': 'string'}
-                        },
-                        'dependencies': {
-                            'type': 'list',
-                            'schema': {'type': 'string'}
-                        },
-                        'mount': {
-                            'type': 'list',
-                            'schema': {'type': 'string'}
-                        }
-                    }
                 }
             }
-        }
+        },
+# FIXME: Add support for grouping behaviours
+#        'groups': {
+#            'type': 'dict',
+#            'keyschema': {
+#                'options': {
+#                    'port': {
+#                        'type': 'list',
+#                        'schema': {'type': 'string'}
+#                    },
+#                    'env': {
+#                        'type': 'list',
+#                        'schema': {'type': 'string'}
+#                    },
+#                    'dependencies': {
+#                        'type': 'list',
+#                        'schema': {'type': 'string'}
+#                    },
+#                    'mount': {
+#                        'type': 'list',
+#                        'schema': {'type': 'string'}
+#                    }
+#                },
+#                'containers': {
+#                    'type': 'dict',
+#                    'keyschema': {
+#                        'port': {
+#                            'type': 'list',
+#                            'schema': {'type': 'string'}
+#                        },
+#                        'env': {
+#                            'type': 'list',
+#                            'schema': {'type': 'string'}
+#                        },
+#                        'dependencies': {
+#                            'type': 'list',
+#                            'schema': {'type': 'string'}
+#                        },
+#                        'mount': {
+#                            'type': 'list',
+#                            'schema': {'type': 'string'}
+#                        }
+#                    }
+#                }
+#            }
+#        }
     }
 
     filename = opts["--config"]

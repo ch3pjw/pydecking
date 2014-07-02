@@ -57,7 +57,7 @@ def main():
         decking_config = _read_config(opts)
 
         docker_client = docker.Client(
-            base_url='unix://var/run/docker.sock', version='0.9.1', timeout=10)
+            base_url='unix://var/run/docker.sock', version='1.10', timeout=10)
         runner = DeckingRunner(decking_config, docker_client)
 
         if opts["start"]:

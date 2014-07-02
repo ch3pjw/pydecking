@@ -30,6 +30,18 @@ import docker
 from docopt import docopt, DocoptExit
 
 
+def _read_config(opts):
+    filename = opts["--config"]
+    try:
+        with open(filename) as f:
+            return yaml.load(f)
+    except IOError:
+        raise IOError(
+            "Could not open cluster configuration file " +
+            filename
+        )
+
+
 def main():
     try:
         opts = docopt(__doc__)
@@ -41,8 +53,8 @@ def main():
         sys.exit(0)
 
     try:
-        with open(opts["--config"]) as f:
-            decking_config = yaml.load(f)
+
+        decking_config = _read_config(opts)
 
         docker_client = docker.Client(
             base_url='unix://var/run/docker.sock', version='0.9.1', timeout=10)

@@ -14,9 +14,7 @@ class Terminal(blessings.Terminal):
         print("      ", *line)
 
     def print_error_line(self, *line):
-        print(
-            " {t.red}!{t.normal}    ".format(t=self),
-            *line)
+        print(self.red(' !    '), *line)
 
     def print_error(self, title, *lines):
         print("----->", self.red(title))

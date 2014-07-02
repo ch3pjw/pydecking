@@ -1,4 +1,3 @@
-
 from __future__ import print_function
 import time
 
@@ -13,7 +12,8 @@ class DeckingRunner(object):
     All extra kwargs are passed to the docker python client.
     '''
     def __init__(self, decking_config, docker_client):
-        self.decking_config = decking_config
+        self.container_specs = decking_config['containers']
+        self.cluster_specs = decking_config['clusters']
         self.client = docker_client
 
     @staticmethod
@@ -27,11 +27,14 @@ class DeckingRunner(object):
 
     def _containter_names_by_dependency(self, container_specs):
         to_process = set(container_specs.keys())
+
+    def _names_by_dependency(self, specs):
+        to_process = set(specs.keys())
         processed = set()
         while to_process:
             pending = set()
             for name in list(to_process):
-                dependencies = container_specs[name].get('dependencies', [])
+                dependencies = specs[name].get('dependencies', [])
                 links = self._uncolon_mapping(dependencies)
                 if all(link in processed for link in links):
                     to_process.remove(name)
@@ -44,7 +47,7 @@ class DeckingRunner(object):
                 raise RuntimeError('Arg, you have bad dependencies')
             processed |= pending
 
-    def create_container(self, container_spec, name):
+    def create_container(self, name, container_spec):
         image = container_spec['image']
         environment = container_spec.get('env', [])
         port_bindings = self._uncolon_mapping(container_spec.get('port', []))
@@ -60,7 +63,7 @@ class DeckingRunner(object):
         container_spec['instance'] = container_info
         return container_info
 
-    def run_container(self, container_spec, name):
+    def run_container(self, name, container_spec):
         dependencies = container_spec.get('dependencies', [])
         links = self._uncolon_mapping(dependencies)
         volume_bindings = dict(
@@ -78,29 +81,32 @@ class DeckingRunner(object):
             links=links,
             port_bindings=port_bindings)
 
+    def _dependency_aware_map(
+            self, func, iterable, cluster, else_=lambda: None):
+        processed = []
+        cluster_containers = {
+            name: container
+            for name, container in iterable.items()
+            if name in self.cluster_specs[cluster]
+        }
+        for key in self._names_by_dependency(cluster_containers):
+            if key:
+                item = cluster_containers[key]
+                func(key, item)
+                processed.append(key)
+            else:
+                else_()
+        return processed
+
     def create(self, cluster):
-        container_specs = self.decking_config['containers']
-        created = []
-        for name in self._containter_names_by_dependency(container_specs):
-            if name and name in self.decking_config['clusters'][cluster]:
-                container_spec = container_specs[name]
-                self.create_container(container_spec, name)
-                created.append(name)
-        return created
+        return self._dependency_aware_map(
+            self.create_container,
+            self.container_specs,
+            cluster)
 
     def start(self, cluster):
-        container_specs = self.decking_config['containers']
-        running = []
-        for name in self._containter_names_by_dependency(container_specs):
-            if name:
-                if name in self.decking_config['clusters'][cluster]:
-                    container_spec = container_specs[name]
-                    self.run_container(container_spec, name)
-                    running.append(name)
-            else:
-                # FIXME: make some way to tell if container is alive
-                time.sleep(6)
-        return running
-
-
-
+        return self._dependency_aware_map(
+            self.run_container,
+            self.container_specs,
+            cluster,
+            else_=lambda: time.sleep(6))

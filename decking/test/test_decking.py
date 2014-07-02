@@ -2,10 +2,11 @@ from unittest import TestCase
 from mock import MagicMock, patch
 import docker
 
-from runner import DeckingRunner
+from ..runner import DeckingRunner
 
 
-@patch('time.sleep')
+
+@patch('time.sleep', lambda *a: None)
 class TestDeckingRunner(TestCase):
     def setUp(self):
         self.decking_config = {
@@ -25,12 +26,12 @@ class TestDeckingRunner(TestCase):
         self.container_info_1 = {'Id': 'abcd1234'}
         self.container_info_2 = {'Id': 'efab5678'}
 
-    def test_uncolon_mapping(self, sleep_mock):
+    def test_uncolon_mapping(self):
         self.assertEqual(
             DeckingRunner._uncolon_mapping(['a:b', 'c:d']),
             {'a': 'b', 'c': 'd'})
 
-    def test_create_all(self, sleep_mock):
+    def test_create_all(self):
         runner = DeckingRunner(self.decking_config, self.mock_docker_client)
         self.mock_docker_client.create_container.side_effect = [
             self.container_info_1, self.container_info_2]
@@ -43,7 +44,7 @@ class TestDeckingRunner(TestCase):
             self.decking_config['containers']['alice']['instance'],
             self.container_info_2)
 
-    def test_run_all(self, sleep_mock):
+    def test_run_all(self):
         runner = DeckingRunner(self.decking_config, self.mock_docker_client)
         self.assertRaisesRegexp(RuntimeError, 'Must create', runner.run_all)
         self.decking_config['containers']['bob']['instance'] = (
@@ -52,7 +53,7 @@ class TestDeckingRunner(TestCase):
             self.container_info_2)
         runner.run_all()
 
-    def test_bad_depenencies(self, sleep_mock):
+    def test_bad_depenencies(self):
         decking_config = {
             'containers': {
                 'zen': {

@@ -7,7 +7,7 @@ _NAME = 'pydecking'
 import versioneer
 versioneer.versionfile_source = 'decking/_version.py'
 versioneer.versionfile_build = 'decking/_version.py'
-versioneer.tag_prefix = ''
+versioneer.tag_prefix = 'v'
 versioneer.parentdir_prefix = '{}-'.format(_NAME)
 
 

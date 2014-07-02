@@ -189,8 +189,6 @@ def main():
 
     terminal = Terminal()
 
-    print(opts)
-
     try:
         docker_client = docker.Client(
             base_url='unix://var/run/docker.sock', version='1.10', timeout=10)

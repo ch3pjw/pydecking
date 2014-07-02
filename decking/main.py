@@ -214,7 +214,7 @@ def main():
 
     except KeyboardInterrupt:
         terminal.print_error("Operation interrupted by user")
-    except Exception as error:
+    except NotImplementedError as error:
         terminal.print_error(
             "Operation failed",
             error)

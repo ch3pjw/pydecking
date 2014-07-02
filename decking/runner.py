@@ -2,6 +2,7 @@ from __future__ import print_function
 import os
 import time
 import json
+from functools import partial
 from copy import deepcopy
 
 
@@ -137,6 +138,35 @@ class Decking(object):
             links=links,
             port_bindings=port_bindings)
 
+    def pull_container(self, name, container_spec, registry=None):
+        remote_image = image = container_spec['image']
+        if registry:
+            remote_image = '{}/{}'.format(registry, image)
+
+        print('pulling image {}...'.format(remote_image))
+        response = self.client.pull(remote_image)
+        for line in response.splitlines():
+            try:
+                line = json.loads(line)
+            except ValueError:
+                # The output format from this client command is a bit
+                # rubbish... just ignore parsing errors if we can't help
+                pass
+            else:
+                if 'errorDetail' in line:
+                    print('Error:', line['errorDetail']['message'])
+        if remote_image != image:
+            self.client.tag(remote_image, image)
+            self.client.remove_image(remote_image)
+
+    def push_container(self, name, container_spec, registry):
+        image = container_spec['image']
+        remote_image = '{}/{}'.format(registry, image)
+        self.client.tag(image, remote_image)
+        print('pushing image {}...'.format(remote_image))
+        self.client.push(remote_image)
+        self.client.remove_image(remote_image)
+
     def _dependency_aware_map(self, func, iterable, else_=lambda: None):
         processed = []
         for key in self._names_by_dependency(iterable):
@@ -187,35 +217,14 @@ class Decking(object):
             self.container_specs,
             else_=lambda: time.sleep(6))
 
-    def pull(self, registry=None):
-        # FIXME: make this work properly with clusters
-        for container_spec in self.container_specs.values():
-            remote_image = image = container_spec['image']
-            if registry:
-                remote_image = '{}/{}'.format(registry, image)
+    def pull_cluster(self, cluster, registry=None):
+        return self._cluster_and_dependency_aware_map(
+            cluster,
+            partial(self.pull_container, registry=registry),
+            self.container_specs)
 
-            print('pulling image {}...'.format(remote_image))
-            response = self.client.pull(remote_image)
-            for line in response.splitlines():
-                try:
-                    line = json.loads(line)
-                except ValueError:
-                    # The output format from this client command is a bit
-                    # rubbish... just ignore parsing errors if we can't help
-                    pass
-                else:
-                    if 'errorDetail' in line:
-                        print('Error:', line['errorDetail']['message'])
-            if remote_image != image:
-                self.client.tag(remote_image, image)
-                self.client.remove_image(remote_image)
-
-    def push(self, registry):
-        # FIXME: make this work properly with clusters
-        for container_spec in self.container_specs.values():
-            image = container_spec['image']
-            remote_image = '{}/{}'.format(registry, image)
-            self.client.tag(image, remote_image)
-            print('pushing image {}...'.format(remote_image))
-            self.client.push(remote_image)
-            self.client.remove_image(remote_image)
+    def push_cluster(self, cluster, registry):
+        return self._cluster_and_dependency_aware_map(
+            cluster,
+            partial(self.push_container, registry=registry),
+            self.container_specs)

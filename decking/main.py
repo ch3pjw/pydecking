@@ -1,8 +1,8 @@
 """
 Usage:
     decking help
-    decking pull [REGISTRY] [--config=CONFIG]
-    decking push REGISTRY [--config=CONFIG]
+    decking pull CLUSTER [REGISTRY] [--config=CONFIG]
+    decking push CLUSTER REGISTRY [--config=CONFIG]
     decking build IMAGE [--config=CONFIG] [--no-cache]
     decking OPERATION CLUSTER [--config=CONFIG]
 
@@ -207,8 +207,13 @@ def main():
 
         if opts['build']:
             runner.build(opts['IMAGE'])
-        elif opts["pull"]:
-            runner.pull(opts.get('REGISTRY'))
+        elif opts['pull'] or opts['push']:
+            cluster = opts['CLUSTER']
+            registry = opts.get('REGISTRY')
+            if opts['push']:
+                runner.push_cluster(cluster, registry)
+            else:
+                runner.pull_cluster(cluster, registry)
         elif opts['push']:
             runner.push(opts['REGISTRY'])
         else:

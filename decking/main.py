@@ -60,13 +60,114 @@ from decking.terminal import Terminal
 import yaml
 import docker
 from docopt import docopt, DocoptExit
+from cerberus import Validator
 
 
 def _read_config(opts):
+    schema = {
+        'images': {
+            'type': 'dict',
+            'keyschema': {
+                'type': 'string'
+            }
+        },
+        'clusters': {
+            'type': 'dict',
+            'keyschema': {
+                'type': 'dict',
+                'schema': {
+                    'group': {
+                        'type': 'string'
+                    },
+                    'containers': {
+                        'type': 'list',
+                        'schema': {
+                            'type': 'string'
+                        }
+                    }
+                }
+            }
+        },
+        'containers': {
+            'type': 'dict',
+            'required': True,
+            'keyschema': {
+                'image': {
+                    'type': 'string',
+                    'required': True
+                },
+                'port': {
+                    'type': 'list',
+                    'schema': {'type': 'string'}
+                },
+                'env': {
+                    'type': 'list',
+                    'schema': {'type': 'string'}
+                },
+                'dependencies': {
+                    'type': 'list',
+                    'schema': {'type': 'string'}
+                },
+                'mount': {
+                    'type': 'list',
+                    'schema': {'type': 'string'}
+                }
+            }
+        },
+        'groups': {
+            'type': 'dict',
+            'keyschema': {
+                'options': {
+                    'port': {
+                        'type': 'list',
+                        'schema': {'type': 'string'}
+                    },
+                    'env': {
+                        'type': 'list',
+                        'schema': {'type': 'string'}
+                    },
+                    'dependencies': {
+                        'type': 'list',
+                        'schema': {'type': 'string'}
+                    },
+                    'mount': {
+                        'type': 'list',
+                        'schema': {'type': 'string'}
+                    }
+                },
+                'containers': {
+                    'type': 'dict',
+                    'keyschema': {
+                        'port': {
+                            'type': 'list',
+                            'schema': {'type': 'string'}
+                        },
+                        'env': {
+                            'type': 'list',
+                            'schema': {'type': 'string'}
+                        },
+                        'dependencies': {
+                            'type': 'list',
+                            'schema': {'type': 'string'}
+                        },
+                        'mount': {
+                            'type': 'list',
+                            'schema': {'type': 'string'}
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     filename = opts["--config"]
     try:
         with open(filename) as f:
-            return yaml.load(f)
+            result = yaml.load(f)
+            validator = Validator()
+            if not validator.validate(result, schema):
+                raise ValueError(str(validator.errors))
+            return result
     except IOError:
         raise IOError(
             "Could not open cluster configuration file " +

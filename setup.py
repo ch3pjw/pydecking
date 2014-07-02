@@ -58,7 +58,8 @@ setup(
         'PyYaml',
         'docker-py',
         'docopt',
-        'blessings'
+        'blessings',
+        'cerberus'
     ),
     extras_require={
         'dev': (

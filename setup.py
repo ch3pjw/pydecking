@@ -55,7 +55,6 @@ setup(
     url='https://github.com/ch3pjw/pydecking',
     packages=find_packages(),
     install_requires=(
-        'json',
         'PyYaml',
         'docker-py',
         'docopt',

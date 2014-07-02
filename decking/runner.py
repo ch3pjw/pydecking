@@ -84,6 +84,15 @@ class DeckingRunner(object):
     def _dependency_aware_map(
             self, func, iterable, cluster, else_=lambda: None):
         processed = []
+
+        if not cluster in self.cluster_specs:
+            raise ValueError(
+                "cluster {} wasn't found. {} are available".format(
+                    cluster,
+                    self.cluster_specs.keys()
+                )
+            )
+
         cluster_containers = {
             name: container
             for name, container in iterable.items()

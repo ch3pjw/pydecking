@@ -33,7 +33,7 @@ class TestDeckingRunner(TestCase):
             DeckingRunner._uncolon_mapping(['a:b', 'c:d']),
             {'a': 'b', 'c': 'd'})
 
-    def test_create_all(self, sleep_mock):
+    def test_create(self, sleep_mock):
         runner = DeckingRunner(self.decking_config, self.mock_docker_client)
         self.mock_docker_client.create_container.side_effect = [
             self.container_info_1, self.container_info_2]
@@ -46,15 +46,24 @@ class TestDeckingRunner(TestCase):
             self.decking_config['containers']['alice']['instance'],
             self.container_info_2)
 
-    def test_run_all(self, sleep_mock):
-        runner = DeckingRunner(self.decking_config, self.mock_docker_client)
-        self.assertRaisesRegexp(
-            RuntimeError, 'Must create', runner.start, 'office')
+    def _prepare_run(self):
         self.decking_config['containers']['bob']['instance'] = (
             self.container_info_1)
         self.decking_config['containers']['alice']['instance'] = (
             self.container_info_2)
+
+    def test_run(self, sleep_mock):
+        runner = DeckingRunner(self.decking_config, self.mock_docker_client)
+        self.assertRaisesRegexp(
+            RuntimeError, 'Must create', runner.start, 'office')
+        self._prepare_run()
         runner.start('office')
+
+    def test_cluster_not_found(self, sleep_mock):
+        runner = DeckingRunner(self.decking_config, self.mock_docker_client)
+        self._prepare_run()
+        self.assertRaisesRegexp(
+            ValueError, "wasn't found", runner.start, 'pub')
 
     def test_bad_dependencies(self, sleep_mock):
         decking_config = {

@@ -175,12 +175,24 @@ class DeckingRunner(object):
             else_=lambda: time.sleep(6))
 
     def pull(self, registry=None):
+        # FIXME: make this work properly with clusters
         for container_spec in self.container_specs.values():
             remote_image = image = container_spec['image']
             if registry:
                 remote_image = '{}/{}'.format(registry, image)
 
-            self.client.pull(remote_image)
+            print('pulling image {}...'.format(remote_image))
+            response = self.client.pull(remote_image)
+            for line in response.splitlines():
+                try:
+                    line = json.loads(line)
+                except ValueError:
+                    # The output format from this client command is a bit
+                    # rubbish... just ignore parsing errors if we can't help
+                    pass
+                else:
+                    if 'errorDetail' in line:
+                        print('Error:', line['errorDetail']['message'])
             if remote_image != image:
                 self.client.tag(remote_image, image)
                 self.client.remove_image(remote_image)

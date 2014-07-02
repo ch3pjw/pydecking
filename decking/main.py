@@ -2,6 +2,7 @@
 Usage:
     decking help
     decking pull [REGISTRY] [--config=CONFIG]
+    decking push REGISTRY [--config=CONFIG]
     decking build IMAGE [--config=CONFIG] [--no-cache]
     decking OPERATION CLUSTER [--config=CONFIG]
 
@@ -203,6 +204,8 @@ def main():
             runner.build(opts['IMAGE'])
         elif opts["pull"]:
             runner.pull(opts.get('REGISTRY'))
+        elif opts['push']:
+            runner.push(opts['REGISTRY'])
         else:
             command, cluster = opts['OPERATION'], opts['CLUSTER']
             if command in commands:

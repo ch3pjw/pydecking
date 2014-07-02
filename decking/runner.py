@@ -196,3 +196,13 @@ class DeckingRunner(object):
             if remote_image != image:
                 self.client.tag(remote_image, image)
                 self.client.remove_image(remote_image)
+
+    def push(self, registry):
+        # FIXME: make this work properly with clusters
+        for container_spec in self.container_specs.values():
+            image = container_spec['image']
+            remote_image = '{}/{}'.format(registry, image)
+            self.client.tag(image, remote_image)
+            print('pushing image {}...'.format(remote_image))
+            self.client.push(remote_image)
+            self.client.remove_image(remote_image)

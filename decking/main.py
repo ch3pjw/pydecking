@@ -56,6 +56,7 @@ and operation please refer to http://decking.io/
 
 from __future__ import print_function
 
+import os
 import sys
 from decking.runner import Decking
 from decking.terminal import Terminal
@@ -168,7 +169,7 @@ def _read_config(opts):
 #        }
     }
 
-    filename = opts["--config"]
+    filename = os.path.expanduser(opts["--config"])
     try:
         with open(filename) as f:
             result = yaml.load(f)

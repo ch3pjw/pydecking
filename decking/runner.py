@@ -166,3 +166,15 @@ class DeckingRunner(object):
             self.run_container,
             self.container_specs,
             else_=lambda: time.sleep(6))
+
+    def pull(self, registry=None):
+        for container_spec in self.container_specs.values():
+            remote_image = image = container_spec['image']
+            if registry:
+                remote_image = '{}/{}'.format(registry, image)
+
+            self.client.pull(remote_image)
+            if remote_image != image:
+                self.client.tag(remote_image, image)
+                self.client.remove_image(remote_image)
+

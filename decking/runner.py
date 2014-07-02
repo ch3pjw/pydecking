@@ -1,4 +1,3 @@
-
 from __future__ import print_function
 import time
 
@@ -99,6 +98,3 @@ class DeckingRunner(object):
                 # FIXME: make some way to tell if container is alive
                 time.sleep(6)
         return running
-
-
-

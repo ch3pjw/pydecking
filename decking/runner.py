@@ -12,7 +12,7 @@ class DeckingRunner(object):
     All extra kwargs are passed to the docker python client.
     '''
     def __init__(self, decking_config, docker_client):
-        self.decking_config = decking_config
+        self.container_specs = decking_config['containers']
         self.client = docker_client
 
     @staticmethod
@@ -77,21 +77,19 @@ class DeckingRunner(object):
             port_bindings=port_bindings)
 
     def create_all(self):
-        container_specs = self.decking_config['containers']
         created = []
-        for name in self._containter_names_by_dependency(container_specs):
+        for name in self._containter_names_by_dependency(self.container_specs):
             if name:
-                container_spec = container_specs[name]
+                container_spec = self.container_specs[name]
                 self.create_container(container_spec, name)
                 created.append(name)
         return created
 
     def run_all(self):
-        container_specs = self.decking_config['containers']
         running = []
-        for name in self._containter_names_by_dependency(container_specs):
+        for name in self._containter_names_by_dependency(self.container_specs):
             if name:
-                container_spec = container_specs[name]
+                container_spec = self.container_specs[name]
                 self.run_container(container_spec, name)
                 running.append(name)
             else:

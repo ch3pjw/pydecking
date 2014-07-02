@@ -15,12 +15,25 @@ class DeckingRunner(object):
     All extra kwargs are passed to the docker python client.
     '''
     def __init__(self, decking_config, docker_client):
-        self.image_specs = self._parse_image_specs(
-            decking_config.get('images', {}))
+        self._raw_image_specs = decking_config.get('images', {})
+        self._image_specs = None
         self.container_specs = self._parse_container_specs(
             decking_config['containers'])
         self.cluster_specs = decking_config['clusters']
         self.client = docker_client
+
+    @property
+    def image_specs(self):
+        '''We lazily call parsing of the image_specs, as it goes away and tries
+        to load the referenced Dockerfiles. We might not want to do this should
+        we not be doing anything with images on our machine.
+        '''
+        # FIXME: potentially we don't need to worry about this - if someone has
+        # specified paths to Dockerfiles it might makes sense just to die if
+        # the paths are wrong?
+        if self._image_specs is None:
+            self._image_specs = self._parse_image_specs(self._raw_image_specs)
+        return self._image_specs
 
     def _parse_image_specs(self, image_specs):
         '''Translates the image specifications in the decking.json file into an

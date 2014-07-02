@@ -68,7 +68,7 @@ class DeckingRunner(object):
         port_bindings = self._uncolon_mapping(container_spec.get('port', []))
         if 'instance' not in container_spec:
             raise RuntimeError(
-                'Must create a container instance before attmepting to run')
+                'Must create a container instance before attempting to run')
         print('running container {!r} ({})...'.format(
             name, container_spec['instance']['Id'][:12]))
         self.client.start(

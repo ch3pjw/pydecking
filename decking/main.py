@@ -12,7 +12,7 @@ Usage:
 Arguments:
     IMAGE               The name of the image to build according to the
                         directives located in the cluster configuration
-                        file. The build all images, specify 'all'.
+                        file. To build all images, specify 'all'.
 
 Options:
     --config=CONFIG     Define the file to read the cluster configuration

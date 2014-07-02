@@ -161,6 +161,13 @@ class DeckingRunner(object):
             cluster, self.create_container, self.container_specs)
 
     def start(self, cluster):
+        containers = self.client.containers(all=True, limit=-1)
+        for container_info in containers:
+            for name in container_info['Names']:
+                # strip off the leading /
+                name = name[1:]
+                if name in self.container_specs:
+                    self.container_specs[name]['instance'] = container_info
         return self._cluster_and_dependency_aware_map(
             cluster,
             self.run_container,

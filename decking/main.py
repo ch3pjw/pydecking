@@ -57,7 +57,7 @@ and operation please refer to http://decking.io/
 from __future__ import print_function
 
 import sys
-from decking.runner import DeckingRunner
+from decking.runner import Decking
 from decking.terminal import Terminal
 import yaml
 import docker
@@ -198,7 +198,7 @@ def main():
     try:
         docker_client = docker.Client(
             base_url='unix://var/run/docker.sock', version='1.10', timeout=10)
-        runner = DeckingRunner(_read_config(opts), docker_client)
+        runner = Decking(_read_config(opts), docker_client)
         commands = {
             'create': runner.create_cluster,
             'start': runner.start_cluster

@@ -5,7 +5,7 @@ import json
 from copy import deepcopy
 
 
-class DeckingRunner(object):
+class Decking(object):
     '''Takes decking configuration, as defined in the decking project and
     runs it using the python docker API.
 

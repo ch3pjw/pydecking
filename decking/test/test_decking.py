@@ -50,16 +50,16 @@ class TestDeckingRunner(TestCase):
             result = DeckingRunner._parse_dockerfile(f)
         self.assertEqual(result, 'ubuntu')
 
-    def test_build(self):
+    def test_build_image(self):
         runner = DeckingRunner(self.decking_config, self.mock_docker_client)
         built = runner.build('all')
         self.assertEqual(built, ['repo/alice', 'repo/bob'])
 
-    def test_create(self):
+    def test_create_cluster(self):
         runner = DeckingRunner(self.decking_config, self.mock_docker_client)
         self.mock_docker_client.create_container.side_effect = [
             self.container_info_1, self.container_info_2]
-        created = runner.create('office')
+        created = runner.create_cluster('office')
         self.assertEqual(created, ['bob', 'alice'])
         self.assertEqual(
             runner.container_specs['bob']['instance'], self.container_info_1)
@@ -70,18 +70,18 @@ class TestDeckingRunner(TestCase):
         runner.container_specs['bob']['instance'] = self.container_info_1
         runner.container_specs['alice']['instance'] = self.container_info_2
 
-    def test_start(self):
+    def test_start_cluster(self):
         runner = DeckingRunner(self.decking_config, self.mock_docker_client)
         self.assertRaisesRegexp(
-            RuntimeError, 'Must create', runner.start, 'office')
+            RuntimeError, 'Must create', runner.start_cluster, 'office')
         self._prepare_run(runner)
-        runner.start('office')
+        runner.start_cluster('office')
 
     def test_cluster_not_found(self):
         runner = DeckingRunner(self.decking_config, self.mock_docker_client)
         self._prepare_run(runner)
         self.assertRaisesRegexp(
-            ValueError, "Undefined cluster.*pub", runner.start, 'pub')
+            ValueError, "Undefined cluster.*pub", runner.start_cluster, 'pub')
 
     def test_bad_depenencies(self):
         decking_config = {
@@ -97,7 +97,7 @@ class TestDeckingRunner(TestCase):
         }
         runner = DeckingRunner(decking_config, self.mock_docker_client)
         self.assertRaisesRegexp(
-            RuntimeError, 'dependencies', runner.start, 'dojo')
+            RuntimeError, 'dependencies', runner.start_cluster, 'dojo')
         decking_config = {
             'containers': {
                 'zen': {
@@ -137,8 +137,10 @@ class TestDeckingRunner(TestCase):
 
         self.mock_docker_client.pull.assert_called_once_with(remote_image_path)
         if registry:
-            self.mock_docker_client.tag.assert_called_once_with(remote_image_path, image_path)
-            self.mock_docker_client.remove_image.assert_called_once_with(remote_image_path)
+            self.mock_docker_client.tag.assert_called_once_with(
+                remote_image_path, image_path)
+            self.mock_docker_client.remove_image.assert_called_once_with(
+                remote_image_path)
         else:
             self.assertFalse(self.mock_docker_client.tag.called)
             self.assertFalse(self.mock_docker_client.remove_image.called)
@@ -148,4 +150,3 @@ class TestDeckingRunner(TestCase):
 
     def test_pull_no_repo(self):
         self._test_pull(None)
-        

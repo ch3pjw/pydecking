@@ -156,11 +156,11 @@ class DeckingRunner(object):
         return self._dependency_aware_map(
             func, container_specs, *args, **kwargs)
 
-    def create(self, cluster):
+    def create_cluster(self, cluster):
         return self._cluster_and_dependency_aware_map(
             cluster, self.create_container, self.container_specs)
 
-    def start(self, cluster):
+    def start_cluster(self, cluster):
         containers = self.client.containers(all=True, limit=-1)
         for container_info in containers:
             for name in container_info['Names']:
@@ -184,4 +184,3 @@ class DeckingRunner(object):
             if remote_image != image:
                 self.client.tag(remote_image, image)
                 self.client.remove_image(remote_image)
-

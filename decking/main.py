@@ -194,15 +194,19 @@ def main():
         docker_client = docker.Client(
             base_url='unix://var/run/docker.sock', version='1.10', timeout=10)
         runner = DeckingRunner(_read_config(opts), docker_client)
+        commands = {
+            'create': runner.create_cluster,
+            'start': runner.start_cluster
+        }
 
         if opts['build']:
             runner.build(opts['IMAGE'])
-        if opts["pull"]:
+        elif opts["pull"]:
             runner.pull(opts.get('REGISTRY'))
         else:
             command, cluster = opts['OPERATION'], opts['CLUSTER']
-            if command in ('build', 'create', 'start'):
-                getattr(runner, command)(cluster)
+            if command in commands:
+                commands[command](cluster)
             else:
                 raise NotImplementedError(
                     "This operation hasn't been implemented yet")

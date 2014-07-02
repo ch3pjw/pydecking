@@ -143,9 +143,9 @@ class TestDeckingRunner(TestCase):
             self.assertFalse(self.mock_docker_client.tag.called)
             self.assertFalse(self.mock_docker_client.remove_image.called)
 
-    def test_pull_repo(self, sleep_mock):
+    def test_pull_repo(self):
         self._test_pull('foobar')
 
-    def test_pull_no_repo(self, sleep_mock):
+    def test_pull_no_repo(self):
         self._test_pull(None)
         

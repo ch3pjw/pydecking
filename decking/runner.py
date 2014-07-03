@@ -15,13 +15,16 @@ class Decking(object):
 
     All extra kwargs are passed to the docker python client.
     '''
-    def __init__(self, decking_config, docker_client):
+
+    def __init__(self, decking_config, docker_client, terminal):
         self._raw_image_specs = decking_config.get('images', {})
         self._image_specs = None
         self.container_specs = self._parse_container_specs(
             decking_config['containers'])
         self.cluster_specs = decking_config['clusters']
         self.client = docker_client
+        self._term = terminal
+
 
     @property
     def image_specs(self):
@@ -81,11 +84,13 @@ class Decking(object):
         return dict(item.split(':') for item in mapping_as_sequence)
 
     def build_image(self, tag, image_spec):
-        print('building image {!r}...'.format(tag))
+        self._term.print_step('building image {!r}...'.format(tag))
         stream = self.client.build(image_spec['path'], tag=tag, rm=True)
-        for line in stream:
-            line = json.loads(line)
-            print(line['stream'].strip())
+        for steam_element in stream:
+            steam_element = json.loads(steam_element)
+            if 'stream' in steam_element:
+                for line in steam_element['stream'].strip().splitlines():
+                    self._term.print_line(line)
 
     def _names_by_dependency(self, specs):
         to_process = set(specs.keys())
@@ -109,14 +114,14 @@ class Decking(object):
         image = container_spec['image']
         environment = container_spec.get('env', [])
         port_bindings = self._uncolon_mapping(container_spec.get('port', []))
-        print('creating container {!r}... '
-              ''.format(name), end='')
+        self._term.print_step(
+            'creating container {!r}... '.format(name))
         container_info = self.client.create_container(
             image,
             name=name,
             environment=environment,
             ports=port_bindings.keys())
-        print('({})'.format(container_info['Id'][:12]))
+        self._term.print_line('({})'.format(container_info['Id'][:12]))
         # FIXME: make this less side-effecty?
         container_spec['instance'] = container_info
         return container_info
@@ -130,7 +135,7 @@ class Decking(object):
         if 'instance' not in container_spec:
             raise RuntimeError(
                 'Must create a container instance before attempting to run')
-        print('running container {!r} ({})...'.format(
+        self._term.print_step('running container {!r} ({})...'.format(
             name, container_spec['instance']['Id'][:12]))
         self.client.start(
             container_spec['instance'],
@@ -139,11 +144,14 @@ class Decking(object):
             port_bindings=port_bindings)
 
     def pull_container(self, name, container_spec, registry=None):
-        remote_image = image = container_spec['image']
+        self.pull_thing(container_spec['image'], registry)
+
+    def pull_single_image(self, image, registry=None):
+        remote_image = image
         if registry:
             remote_image = '{}/{}'.format(registry, image)
 
-        print('pulling image {}...'.format(remote_image))
+        self._term.print_step('pulling image {}...'.format(remote_image))
         response = self.client.pull(remote_image)
         for line in response.splitlines():
             try:
@@ -154,16 +162,18 @@ class Decking(object):
                 pass
             else:
                 if 'errorDetail' in line:
-                    print('Error:', line['errorDetail']['message'])
+                    self._term.print_error(line['errorDetail']['message'])
         if remote_image != image:
             self.client.tag(remote_image, image)
             self.client.remove_image(remote_image)
 
     def push_container(self, name, container_spec, registry):
-        image = container_spec['image']
+        self.push_thing(container_spec['image'], registry)
+
+    def push_single_image(self, image, registry):
         remote_image = '{}/{}'.format(registry, image)
         self.client.tag(image, remote_image)
-        print('pushing image {}...'.format(remote_image))
+        self._term.print_step('pushing image {}...'.format(remote_image))
         self.client.push(remote_image)
         self.client.remove_image(remote_image)
 
@@ -180,8 +190,40 @@ class Decking(object):
 
     def build(self, image):
         if image != 'all':
-            raise ValueError('You can only build all images right now')
+            raise NotImplementedError('You can only build all images right now')
         return self._dependency_aware_map(self.build_image, self.image_specs)
+
+    def _push_or_pull_thing(self, thing, registry,
+                            image_operation, cluster_operation):
+        if thing == 'all':
+            matched_images = self.image_specs.keys()
+        else:
+            if thing in self.image_specs:
+                matched_images = [thing]
+            else:
+                matched_images = []
+
+        if matched_images:
+            for img in matched_images:
+                image_operation(img, registry)
+        else:
+            try:
+                cluster_operation(thing, registry)
+            except ValueError as no_cluster:
+                raise ValueError(
+                    'Undefined image name {!r}. Defined: {!r}\n{}'.format(
+                        thing,
+                        self.image_specs.keys(),
+                        no_cluster.message)
+                )
+
+    def pull_thing(self, thing, registry=None):
+        self._push_or_pull_thing(
+            thing, registry, self.pull_single_image, self.pull_cluster)
+
+    def push_thing(self, thing, registry):
+        self._push_or_pull_thing(
+            thing, registry, self.push_single_image, self.push_cluster)
 
     @staticmethod
     def _filter_dict_by_keys(d, keys):

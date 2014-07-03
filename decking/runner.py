@@ -144,7 +144,7 @@ class Decking(object):
             port_bindings=port_bindings)
 
     def pull_container(self, name, container_spec, registry=None):
-        self.pull_thing(container_spec['image'], registry)
+        self.pull_single_image(container_spec['image'], registry)
 
     def pull_single_image(self, image, registry=None):
         remote_image = image
@@ -168,7 +168,7 @@ class Decking(object):
             self.client.remove_image(remote_image)
 
     def push_container(self, name, container_spec, registry):
-        self.push_thing(container_spec['image'], registry)
+        self.push_single_image(container_spec['image'], registry)
 
     def push_single_image(self, image, registry):
         remote_image = '{}/{}'.format(registry, image)

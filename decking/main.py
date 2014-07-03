@@ -1,19 +1,19 @@
 """
 Usage:
     decking help
-    decking pull CLUSTER [REGISTRY] [--config=CONFIG]
-    decking push CLUSTER REGISTRY [--config=CONFIG]
-    decking build IMAGE [--config=CONFIG] [--no-cache]
+    decking build WHAT [--no-cache] [--config=CONFIG]
+    decking (push | pull) WHAT [REGISTRY] [--config=CONFIG]
     decking OPERATION CLUSTER [--config=CONFIG]
 
-Image build parameter:
-    IMAGE           The image name found in the decking definition file.
-                    When provided with the literal string 'all', this simply
-                    iterates through each key of the images object and builds
-                    them in turn.
-
+decking image operations:
+    WHAT            The image name found in the decking definition file,
+                    or the cluster on which all images must be built.
+                    To reference all images provide the literal string
+                    'all'.
     --no-cache      Prevents Docker using cached layers during the build.
-Cluster operations:
+    REGISTRY        The url of the registry used for the operation.
+
+decking cluster operations:
     CLUSTER         The cluster as defined in the decking definition file
                     to perform the command on.
     OPERATION       create - Builds containers for a given cluster as well
@@ -44,6 +44,8 @@ Cluster operations:
                         Survives brief outages in container availability
                         meaning it does not have to be re run each time a
                         container is restarted.
+                    build - build the images associated to the cluster.
+                    push - p
 
 Global options:
     --config=CONFIG Define the file to read the decking definition
@@ -199,23 +201,21 @@ def main():
     try:
         docker_client = docker.Client(
             base_url='unix://var/run/docker.sock', version='1.10', timeout=10)
-        runner = Decking(_read_config(opts), docker_client)
+        runner = Decking(_read_config(opts), docker_client, terminal)
         commands = {
             'create': runner.create_cluster,
             'start': runner.start_cluster
         }
 
         if opts['build']:
-            runner.build(opts['IMAGE'])
+            runner.build(opts['WHAT'])
         elif opts['pull'] or opts['push']:
-            cluster = opts['CLUSTER']
+            image = opts['WHAT']
             registry = opts.get('REGISTRY')
             if opts['push']:
-                runner.push_cluster(cluster, registry)
-            else:
-                runner.pull_cluster(cluster, registry)
-        elif opts['push']:
-            runner.push(opts['REGISTRY'])
+                runner.push_thing(image, registry)
+            elif opts['pull']:
+                runner.pull_thing(image, registry)
         else:
             command, cluster = opts['OPERATION'], opts['CLUSTER']
             if command in commands:

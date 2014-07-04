@@ -195,10 +195,12 @@ class Decking(object):
 
     def _push_or_pull_thing(self, thing, registry,
                             image_operation, cluster_operation):
+        # FIXME: We probably don't want to use _raw_image_specs; but we want to
+        # avoid trying to read Dockerfiles for this action
         if thing == 'all':
-            matched_images = self.image_specs.keys()
+            matched_images = self._raw_image_specs.keys()
         else:
-            if thing in self.image_specs:
+            if thing in self._raw_image_specs:
                 matched_images = [thing]
             else:
                 matched_images = []
@@ -213,7 +215,7 @@ class Decking(object):
                 raise ValueError(
                     'Undefined image name {!r}. Defined: {!r}\n{}'.format(
                         thing,
-                        self.image_specs.keys(),
+                        self._raw_image_specs.keys(),
                         no_cluster.message)
                 )
 

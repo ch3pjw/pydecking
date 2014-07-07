@@ -200,7 +200,8 @@ def main():
 
     try:
         docker_client = docker.Client(
-            base_url=os.environ.get('DOCKER_HOST'), timeout=10)
+            base_url=os.environ.get('DOCKER_HOST'),
+            version='1.10', timeout=10)
         runner = Decking(_read_config(opts), docker_client, terminal)
         commands = {
             'create': runner.create_cluster,

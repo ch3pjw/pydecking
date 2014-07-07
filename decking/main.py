@@ -120,7 +120,10 @@ def _read_config(opts):
                     'mount': {
                         'type': 'list',
                         'schema': {'type': 'string'}
-                    }
+                    },
+                    'net': {
+                        'type': 'string'
+                    },
                 }
             }
         },

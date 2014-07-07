@@ -141,7 +141,10 @@ class Decking(object):
             container_spec['instance'],
             binds=volume_bindings,
             links=links,
-            port_bindings=port_bindings)
+            port_bindings=port_bindings,
+            # FIXME: take some time to consider the name of this option
+            network_mode=container_spec.get('net'),
+        )
 
     def pull_container(self, name, container_spec, registry=None):
         self.pull_single_image(container_spec['image'], registry)

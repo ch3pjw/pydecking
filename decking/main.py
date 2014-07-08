@@ -208,7 +208,8 @@ def main():
         runner = Decking(_read_config(opts), docker_client, terminal)
         commands = {
             'create': runner.create_cluster,
-            'start': runner.start_cluster
+            'start': runner.start_cluster,
+            'stop': runner.stop_cluster
         }
 
         if opts['build']:

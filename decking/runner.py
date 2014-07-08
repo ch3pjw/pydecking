@@ -145,6 +145,12 @@ class Decking(object):
             network_mode=container_spec.get('net'),
         )
 
+    def stop_container(self, name, container_spec):
+        self._term.print_step('stopping container {!r} ({})...'.format(
+            name, container_spec['instance']['Id'][:12]))
+        # Timeout must be smaller than our client's socket read timeout:
+        self.client.stop(container_spec['instance'], timeout=8)
+
     def pull_container(self, name, container_spec, registry=None):
         self.pull_single_image(container_spec['image'], registry)
 
@@ -178,17 +184,6 @@ class Decking(object):
         self._term.print_step('pushing image {}...'.format(remote_image))
         self.client.push(remote_image)
         self.client.remove_image(remote_image)
-
-    def _dependency_aware_map(self, func, iterable, else_=lambda: None):
-        processed = []
-        for key in self._names_by_dependency(iterable):
-            if key:
-                item = iterable[key]
-                func(key, item)
-                processed.append(key)
-            else:
-                else_()
-        return processed
 
     def build(self, image):
         if image != 'all':
@@ -234,6 +229,21 @@ class Decking(object):
     def _filter_dict_by_keys(d, keys):
         return dict(filter(lambda item: item[0] in keys, d.items()))
 
+    def _dependency_aware_map(
+            self, func, iterable, reverse=False, else_=lambda: None):
+        processed = []
+        iterator = self._names_by_dependency(iterable)
+        if reverse:
+            iterator = reversed(tuple(iterator))
+        for key in iterator:
+            if key:
+                item = iterable[key]
+                func(key, item)
+                processed.append(key)
+            else:
+                else_()
+        return processed
+
     def _cluster_and_dependency_aware_map(
             self, cluster, func, container_specs, *args, **kwargs):
         if cluster not in self.cluster_specs:
@@ -250,7 +260,7 @@ class Decking(object):
         return self._cluster_and_dependency_aware_map(
             cluster, self.create_container, self.container_specs)
 
-    def start_cluster(self, cluster):
+    def _populate_live_container_data(self):
         containers = self.client.containers(all=True, limit=-1)
         for container_info in containers:
             for name in container_info['Names']:
@@ -258,11 +268,22 @@ class Decking(object):
                 name = name[1:]
                 if name in self.container_specs:
                     self.container_specs[name]['instance'] = container_info
+
+    def start_cluster(self, cluster):
+        self._populate_live_container_data()
         return self._cluster_and_dependency_aware_map(
             cluster,
             self.start_container,
             self.container_specs,
             else_=lambda: time.sleep(6))
+
+    def stop_cluster(self, cluster):
+        self._populate_live_container_data()
+        return self._cluster_and_dependency_aware_map(
+            cluster,
+            self.stop_container,
+            self.container_specs,
+            reverse=True)
 
     def pull_cluster(self, cluster, registry=None):
         return self._cluster_and_dependency_aware_map(

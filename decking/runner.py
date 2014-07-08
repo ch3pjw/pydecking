@@ -25,7 +25,6 @@ class Decking(object):
         self.client = docker_client
         self._term = terminal
 
-
     @property
     def image_specs(self):
         '''We lazily call parsing of the image_specs, as it goes away and tries
@@ -193,7 +192,8 @@ class Decking(object):
 
     def build(self, image):
         if image != 'all':
-            raise NotImplementedError('You can only build all images right now')
+            raise NotImplementedError(
+                'You can only build all images right now')
         return self._dependency_aware_map(self.build_image, self.image_specs)
 
     def _push_or_pull_thing(self, thing, registry,

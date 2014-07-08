@@ -126,7 +126,7 @@ class Decking(object):
         container_spec['instance'] = container_info
         return container_info
 
-    def run_container(self, name, container_spec):
+    def start_container(self, name, container_spec):
         links = container_spec.get('links', [])
         volume_bindings = dict(
             self._build_volume_binding(mount_entry)
@@ -135,7 +135,7 @@ class Decking(object):
         if 'instance' not in container_spec:
             raise RuntimeError(
                 'Must create a container instance before attempting to run')
-        self._term.print_step('running container {!r} ({})...'.format(
+        self._term.print_step('starting container {!r} ({})...'.format(
             name, container_spec['instance']['Id'][:12]))
         self.client.start(
             container_spec['instance'],
@@ -260,7 +260,7 @@ class Decking(object):
                     self.container_specs[name]['instance'] = container_info
         return self._cluster_and_dependency_aware_map(
             cluster,
-            self.run_container,
+            self.start_container,
             self.container_specs,
             else_=lambda: time.sleep(6))
 

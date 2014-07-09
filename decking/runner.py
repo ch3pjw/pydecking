@@ -82,14 +82,19 @@ class Decking(object):
     def _uncolon_mapping(mapping_as_sequence):
         return dict(item.split(':') for item in mapping_as_sequence)
 
+    def _consume_stream(self, stream):
+        for item in stream:
+            item = json.loads(item)
+            if 'stream' in item:
+                for line in item['stream'].strip().splitlines():
+                    self._term.print_line(line)
+            if 'error' in item:
+                raise RuntimeError(item['error'])
+
     def build_image(self, tag, image_spec):
         self._term.print_step('building image {!r}...'.format(tag))
         stream = self.client.build(image_spec['path'], tag=tag, rm=True)
-        for steam_element in stream:
-            steam_element = json.loads(steam_element)
-            if 'stream' in steam_element:
-                for line in steam_element['stream'].strip().splitlines():
-                    self._term.print_line(line)
+        self._consume_stream(stream)
 
     def _names_by_dependency(self, specs):
         to_process = set(specs.keys())

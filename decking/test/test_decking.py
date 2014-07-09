@@ -135,7 +135,7 @@ class TestDecking(TestCase):
         runner = Decking(decking_config, self.mock_docker_client, Mock())
         runner.pull_cluster(cluster='dojo', registry=registry)
 
-        self.mock_docker_client.pull.assert_called_once_with(remote_image_path)
+        self.mock_docker_client.pull.assert_called_once_with(remote_image_path, stream=True)
         if registry:
             self.mock_docker_client.tag.assert_called_once_with(
                 remote_image_path, image_path)

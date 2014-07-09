@@ -165,17 +165,9 @@ class Decking(object):
             remote_image = '{}/{}'.format(registry, image)
 
         self._term.print_step('pulling image {}...'.format(remote_image))
-        response = self.client.pull(remote_image)
-        for line in response.splitlines():
-            try:
-                line = json.loads(line)
-            except ValueError:
-                # The output format from this client command is a bit
-                # rubbish... just ignore parsing errors if we can't help
-                pass
-            else:
-                if 'errorDetail' in line:
-                    self._term.print_error(line['errorDetail']['message'])
+        stream = self.client.pull(remote_image, stream=True)
+        self._consume_stream(stream)
+
         if remote_image != image:
             self.client.tag(remote_image, image)
             self.client.remove_image(remote_image)
@@ -187,7 +179,8 @@ class Decking(object):
         remote_image = '{}/{}'.format(registry, image)
         self.client.tag(image, remote_image)
         self._term.print_step('pushing image {}...'.format(remote_image))
-        self.client.push(remote_image)
+        stream = self.client.push(remote_image, stream=True)
+        self._consume_stream(stream)
         self.client.remove_image(remote_image)
 
     def build(self, image):

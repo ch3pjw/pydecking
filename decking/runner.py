@@ -88,7 +88,10 @@ class Decking(object):
             if 'stream' in item:
                 for line in item['stream'].strip().splitlines():
                     self._term.print_line(line)
-            if 'error' in item:
+            elif 'status' in item:
+                # TODO: report progress
+                pass
+            elif 'error' in item:
                 raise RuntimeError(item['error'])
 
     def build_image(self, tag, image_spec):

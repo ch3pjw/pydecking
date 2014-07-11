@@ -210,7 +210,8 @@ def main():
             'create': runner.create_cluster,
             'start': runner.start_cluster,
             'run': runner.run_cluster,
-            'stop': runner.stop_cluster
+            'stop': runner.stop_cluster,
+            'remove': runner.remove_cluster
         }
 
         if opts['build']:

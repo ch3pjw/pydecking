@@ -145,6 +145,11 @@ class Decking(object):
         # Timeout must be smaller than our client's socket read timeout:
         self.client.stop(container_spec['instance'], timeout=8)
 
+    def remove_container(self, name, container_spec):
+        self._term.print_step('removing container {!r} ({})...'.format(
+            name, container_spec['instance']['Id'][:12]))
+        self.client.remove_container(container_spec['instance'])
+
     def pull_container(self, name, container_spec, registry=None):
         self.pull_single_image(container_spec['image'], registry)
 
@@ -296,6 +301,13 @@ class Decking(object):
             self.stop_container,
             self.container_specs,
             reverse=True)
+
+    def remove_cluster(self, cluster):
+        self._populate_live_container_data()
+        return self._cluster_and_dependency_aware_map(
+            cluster,
+            self.remove_container,
+            self.container_specs)
 
     def pull_cluster(self, cluster, registry=None):
         return self._cluster_and_dependency_aware_map(

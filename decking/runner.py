@@ -99,24 +99,6 @@ class Decking(object):
         stream = self.client.build(image_spec['path'], tag=tag, rm=True)
         self._consume_stream(stream)
 
-    def _names_by_dependency(self, specs):
-        to_process = set(specs.keys())
-        processed = set()
-        while to_process:
-            pending = set()
-            for name in list(to_process):
-                dependencies = specs[name].get('dependencies', [])
-                if all(dep in processed for dep in dependencies):
-                    to_process.remove(name)
-                    pending.add(name)
-                    yield name
-            if pending:
-                yield None
-            else:
-                # Stuck not able to process any more containers
-                raise RuntimeError('Arg, you have bad dependencies')
-            processed |= pending
-
     def create_container(self, name, container_spec):
         image = container_spec['image']
         environment = container_spec.get('env', [])
@@ -233,6 +215,24 @@ class Decking(object):
     @staticmethod
     def _filter_dict_by_keys(d, keys):
         return dict(filter(lambda item: item[0] in keys, d.items()))
+
+    def _names_by_dependency(self, specs):
+        to_process = set(specs.keys())
+        processed = set()
+        while to_process:
+            pending = set()
+            for name in list(to_process):
+                dependencies = specs[name].get('dependencies', [])
+                if all(dep in processed for dep in dependencies):
+                    to_process.remove(name)
+                    pending.add(name)
+                    yield name
+            if pending:
+                yield None
+            else:
+                # Stuck not able to process any more containers
+                raise RuntimeError('Arg, you have bad dependencies')
+            processed |= pending
 
     def _dependency_aware_map(
             self, func, iterable, reverse=False, else_=lambda: None):

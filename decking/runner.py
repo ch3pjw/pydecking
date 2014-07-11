@@ -153,6 +153,10 @@ class Decking(object):
             network_mode=container_spec.get('net'),
         )
 
+    def run_container(self, name, container_spec):
+        self.create_container(name, container_spec)
+        self.start_container(name, container_spec)
+
     def stop_container(self, name, container_spec):
         self._term.print_step('stopping container {!r} ({})...'.format(
             name, container_spec['instance']['Id'][:12]))
@@ -275,6 +279,13 @@ class Decking(object):
         return self._cluster_and_dependency_aware_map(
             cluster,
             self.start_container,
+            self.container_specs,
+            else_=lambda: time.sleep(6))
+
+    def run_cluster(self, cluster):
+        return self._cluster_and_dependency_aware_map(
+            cluster,
+            self.run_container,
             self.container_specs,
             else_=lambda: time.sleep(6))
 

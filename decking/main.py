@@ -209,6 +209,7 @@ def main():
         commands = {
             'create': runner.create_cluster,
             'start': runner.start_cluster,
+            'run': runner.run_cluster,
             'stop': runner.stop_cluster
         }
 

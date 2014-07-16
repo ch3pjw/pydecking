@@ -20,3 +20,11 @@ class Terminal(blessings.Terminal):
         print("----->", self.red(title))
         for line in lines:
             self.print_error_line(line)
+
+    def print_warning_line(self, *line):
+        print(self.yellow(' !    '), *line)
+
+    def print_warning(self, title, *lines):
+        print("----->", self.yellow(title))
+        for line in lines:
+            self.print_warning_line(line)

@@ -1,4 +1,9 @@
 from __future__ import print_function
+from Queue import Queue
+import threading
+import sys
+import signal
+import docker
 import os
 import time
 import json
@@ -100,11 +105,18 @@ class Decking(object):
         self._consume_stream(stream)
 
     def create_container(self, name, container_spec):
+        if 'instance' in container_spec:
+            self._term.print_step("{} is already created ({})".format(
+                name,
+                container_spec['instance']['Id'][:12]))
+            return self.client.inspect_container(name)
+
         image = container_spec['image']
         environment = container_spec.get('env', [])
         port_bindings = self._uncolon_mapping(container_spec.get('port', []))
         self._term.print_step(
             'creating container {!r}... '.format(name))
+
         container_info = self.client.create_container(
             image,
             name=name,
@@ -113,6 +125,7 @@ class Decking(object):
         self._term.print_line('({})'.format(container_info['Id'][:12]))
         # FIXME: make this less side-effecty?
         container_spec['instance'] = container_info
+
         return container_info
 
     def start_container(self, name, container_spec):
@@ -122,6 +135,7 @@ class Decking(object):
             for mount_entry in container_spec.get('mount', []))
         port_bindings = self._uncolon_mapping(container_spec.get('port', []))
         if 'instance' not in container_spec:
+            self._term.print_error("container {!r} isn't created".format(name))
             raise RuntimeError(
                 'Must create a container instance before attempting to run')
         self._term.print_step('starting container {!r} ({})...'.format(
@@ -140,15 +154,54 @@ class Decking(object):
         self.start_container(name, container_spec)
 
     def stop_container(self, name, container_spec):
-        self._term.print_step('stopping container {!r} ({})...'.format(
-            name, container_spec['instance']['Id'][:12]))
-        # Timeout must be smaller than our client's socket read timeout:
-        self.client.stop(container_spec['instance'], timeout=8)
+        if 'instance' in container_spec:
+            self._term.print_step('stopping container {!r} ({})...'.format(
+                name, container_spec['instance']['Id'][:12]))
+            # Timeout must be smaller than our client's socket read timeout:
+            self.client.stop(container_spec['instance'], timeout=8)
+
+    def status_container(self, name, container_spec):
+        if 'instance' in container_spec:
+            status_string = '{!r} ({}): {}'.format(
+                name,
+                container_spec['instance']['Id'][:12],
+                container_spec['instance']['Status']
+            )
+            if container_spec['instance']['Status'].startswith('Up'):
+                self._term.print_step(status_string)
+            else:
+                self._term.print_warning(status_string)
+            for port in container_spec['instance']['Ports']:
+                if 'IP' in port:
+                    self._term.print_line('{} {} [{}=>{}]'.format(
+                        port['Type'],
+                        port['IP'],
+                        port['PrivatePort'],
+                        port['PublicPort'])
+                    )
+                else:
+                    self._term.print_line('{} [{}]'.format(
+                        port['Type'],
+                        port['PrivatePort'])
+                    )
+        else:
+            self._term.print_step("{!r} isn't created".format(name))
 
     def remove_container(self, name, container_spec):
-        self._term.print_step('removing container {!r} ({})...'.format(
-            name, container_spec['instance']['Id'][:12]))
-        self.client.remove_container(container_spec['instance'])
+        if 'instance' in container_spec:
+            self._term.print_step('removing container {!r} ({})...'.format(
+                name, container_spec['instance']['Id'][:12]))
+            try:
+                self.client.remove_container(container_spec['instance'])
+            except docker.errors.APIError as error:
+                self._term.print_error(
+                    "couldn't remove container {!r} ({})".format(
+                        name, container_spec['instance']['Id'][:12]
+                    ),
+                    str(error)
+                )
+        else:
+            self._term.print_warning('no instance found for {!r}'.format(name))
 
     def pull_container(self, name, container_spec, registry=None):
         self.pull_single_image(container_spec['image'], registry)
@@ -267,6 +320,7 @@ class Decking(object):
             func, container_specs, *args, **kwargs)
 
     def create_cluster(self, cluster):
+        self._populate_live_container_data()
         return self._cluster_and_dependency_aware_map(
             cluster, self.create_container, self.container_specs)
 
@@ -302,6 +356,10 @@ class Decking(object):
             self.container_specs,
             reverse=True)
 
+    def restart_cluster(self, cluster):
+        self.stop_cluster(cluster)
+        return self.start_cluster(cluster)
+
     def remove_cluster(self, cluster):
         self._populate_live_container_data()
         return self._cluster_and_dependency_aware_map(
@@ -320,3 +378,63 @@ class Decking(object):
             cluster,
             partial(self.push_container, registry=registry),
             self.container_specs)
+
+    def status_cluster(self, cluster):
+        self._populate_live_container_data()
+        return self._cluster_and_dependency_aware_map(
+            cluster,
+            self.status_container,
+            self.container_specs)
+
+    @staticmethod
+    def _log_consumer(container, stream, queue):
+        for line in stream:
+            queue.put((container, line))
+
+    def _display_logs(self, log_queue):
+        current_container = (None, None)
+
+        while True:
+            container, line = log_queue.get()
+            if container != current_container:
+                current_container = container
+                self._term.print_step(container)
+            self._term.print_line(line.strip())
+            time.sleep(0.1)
+
+    @staticmethod
+    def _quit(signal, frame):
+        sys.exit(0)
+
+    def attach_cluster(self, cluster):
+        self._populate_live_container_data()
+        threads = []
+
+        log_queue = Queue()
+
+        signal.signal(signal.SIGINT, self._quit)
+
+        for name in self.cluster_specs[cluster]:
+            stdout_stream = self.client.attach(name, stream=True)
+            thread = threading.Thread(
+                target=self._log_consumer,
+                args=(name, stdout_stream, log_queue)
+            )
+            thread.daemon = True
+            threads.append(thread)
+            thread.start()
+
+        thread = threading.Thread(
+            target=self._display_logs,
+            args=(log_queue,)
+        )
+        thread.daemon = True
+        threads.append(thread)
+        thread.start()
+
+        signal.pause()
+
+
+
+
+

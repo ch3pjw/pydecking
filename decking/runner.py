@@ -338,15 +338,13 @@ class Decking(object):
         return self._cluster_and_dependency_aware_map(
             cluster,
             self.start_container,
-            self.container_specs,
-            else_=lambda: time.sleep(6))
+            self.container_specs)
 
     def run_cluster(self, cluster):
         return self._cluster_and_dependency_aware_map(
             cluster,
             self.run_container,
-            self.container_specs,
-            else_=lambda: time.sleep(6))
+            self.container_specs)
 
     def stop_cluster(self, cluster):
         self._populate_live_container_data()
@@ -433,8 +431,3 @@ class Decking(object):
         thread.start()
 
         signal.pause()
-
-
-
-
-

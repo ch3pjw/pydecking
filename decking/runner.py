@@ -145,6 +145,7 @@ class Decking(object):
             binds=volume_bindings,
             links=links,
             port_bindings=port_bindings,
+            privileged=container_spec.get('privileged', False),
             # FIXME: take some time to consider the name of this option
             network_mode=container_spec.get('net'),
         )

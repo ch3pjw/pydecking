@@ -125,6 +125,9 @@ def _read_config(opts):
                     'net': {
                         'type': 'string'
                     },
+                    'privileged': {
+                        'type': 'boolean',
+                    }
                 }
             }
         },

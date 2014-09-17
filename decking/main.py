@@ -202,11 +202,11 @@ def main():
     try:
         opts = docopt(__doc__)
     except DocoptExit as error:
-        sys.exit(error.message)
+        return error.message
 
     if opts["help"]:
         print(__doc__)
-        sys.exit(0)
+        return 0
 
     terminal = Terminal()
 
@@ -245,12 +245,14 @@ def main():
 
     except KeyboardInterrupt:
         terminal.print_error("Operation interrupted by user")
+        return 1
     except Exception as error:
         if opts["--debug"]:
             raise
         else:
             terminal.print_error("Operation failed", str(error))
+            return 1
+    return 0
 
 if __name__ == '__main__':
-
-    main()
+    sys.exit(main())

@@ -204,30 +204,40 @@ class Decking(object):
         else:
             self._term.print_warning('no instance found for {!r}'.format(name))
 
-    def pull_container(self, name, container_spec, registry=None):
-        self.pull_single_image(container_spec['image'], registry)
+    def pull_container(self, name, container_spec, registry=None,
+                       allow_insecure=False):
+        self.pull_single_image(
+            container_spec['image'], registry, allow_insecure)
 
-    def pull_single_image(self, image, registry=None):
+    def pull_single_image(self, image, registry=None, allow_insecure=False):
         remote_image = image
         if registry:
             remote_image = '{}/{}'.format(registry, image)
 
         self._term.print_step('pulling image {}...'.format(remote_image))
-        stream = self.client.pull(remote_image, stream=True)
+        stream = self.client.pull(
+            remote_image,
+            insecure_registry=allow_insecure,
+            stream=True)
         self._consume_stream(stream)
 
         if remote_image != image:
             self.client.tag(remote_image, image)
             self.client.remove_image(remote_image)
 
-    def push_container(self, name, container_spec, registry):
-        self.push_single_image(container_spec['image'], registry)
+    def push_container(self, name, container_spec, registry,
+                       allow_insecure=False):
+        self.push_single_image(
+            container_spec['image'], registry, allow_insecure)
 
-    def push_single_image(self, image, registry):
+    def push_single_image(self, image, registry, allow_insecure=False):
         remote_image = '{}/{}'.format(registry, image)
         self.client.tag(image, remote_image)
         self._term.print_step('pushing image {}...'.format(remote_image))
-        stream = self.client.push(remote_image, stream=True)
+        stream = self.client.push(
+            remote_image,
+            insecure_registry=allow_insecure,
+            stream=True)
         self._consume_stream(stream)
         self.client.remove_image(remote_image)
 
@@ -237,7 +247,7 @@ class Decking(object):
                 'You can only build all images right now')
         return self._dependency_aware_map(self.build_image, self.image_specs)
 
-    def _push_or_pull_thing(self, thing, registry,
+    def _push_or_pull_thing(self, thing, registry, allow_insecure,
                             image_operation, cluster_operation):
         # FIXME: We probably don't want to use _raw_image_specs; but we want to
         # avoid trying to read Dockerfiles for this action
@@ -251,10 +261,10 @@ class Decking(object):
 
         if matched_images:
             for img in matched_images:
-                image_operation(img, registry)
+                image_operation(img, registry, allow_insecure)
         else:
             try:
-                cluster_operation(thing, registry)
+                cluster_operation(thing, registry, allow_insecure)
             except ValueError as no_cluster:
                 raise ValueError(
                     'Undefined image name {!r}. Defined: {!r}\n{}'.format(
@@ -263,13 +273,15 @@ class Decking(object):
                         no_cluster.message)
                 )
 
-    def pull_thing(self, thing, registry=None):
+    def pull_thing(self, thing, registry=None, allow_insecure=False):
         self._push_or_pull_thing(
-            thing, registry, self.pull_single_image, self.pull_cluster)
+            thing, registry, allow_insecure, self.pull_single_image,
+            self.pull_cluster)
 
-    def push_thing(self, thing, registry):
+    def push_thing(self, thing, registry, allow_insecure=False):
         self._push_or_pull_thing(
-            thing, registry, self.push_single_image, self.push_cluster)
+            thing, registry, allow_insecure, self.push_single_image,
+            self.push_cluster)
 
     @staticmethod
     def _filter_dict_by_keys(d, keys):
@@ -366,10 +378,12 @@ class Decking(object):
             self.remove_container,
             self.container_specs)
 
-    def pull_cluster(self, cluster, registry=None):
+    def pull_cluster(self, cluster, registry=None, allow_insecure=False):
         return self._cluster_and_dependency_aware_map(
             cluster,
-            partial(self.pull_container, registry=registry),
+            partial(self.pull_container,
+                    registry=registry,
+                    allow_insecure=allow_insecure),
             self.container_specs)
 
     def push_cluster(self, cluster, registry):

@@ -117,7 +117,7 @@ class TestDecking(TestCase):
         self.assertRaisesRegexp(
             RuntimeError, 'dependencies', runner.start_cluster, 'dojo')
 
-    def _test_pull(self, registry):
+    def _test_pull(self, registry, allow_insecure):
         remote_image_path = image_path = 'some_repo/zen'
         if registry:
             remote_image_path = '{}/{}'.format(registry, image_path)
@@ -133,9 +133,13 @@ class TestDecking(TestCase):
             }
         }
         runner = Decking(decking_config, self.mock_docker_client, Mock())
-        runner.pull_cluster(cluster='dojo', registry=registry)
+        runner.pull_cluster(
+            cluster='dojo',
+            registry=registry,
+            allow_insecure=allow_insecure)
 
-        self.mock_docker_client.pull.assert_called_once_with(remote_image_path, stream=True)
+        self.mock_docker_client.pull.assert_called_once_with(
+            remote_image_path, insecure_registry=allow_insecure, stream=True)
         if registry:
             self.mock_docker_client.tag.assert_called_once_with(
                 remote_image_path, image_path)
@@ -146,7 +150,7 @@ class TestDecking(TestCase):
             self.assertFalse(self.mock_docker_client.remove_image.called)
 
     def test_pull_repo(self):
-        self._test_pull('foobar')
+        self._test_pull('foobar', False)
 
     def test_pull_no_repo(self):
-        self._test_pull(None)
+        self._test_pull(None, False)

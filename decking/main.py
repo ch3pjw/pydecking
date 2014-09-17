@@ -2,7 +2,7 @@
 Usage:
     decking help
     decking build WHAT [--no-cache] [--config=CONFIG] [--debug]
-    decking (push | pull) WHAT [REGISTRY] [--config=CONFIG] [--debug]
+    decking (push | pull) WHAT [REGISTRY] [--config=CONFIG] [--debug] [--allow-insecure]
     decking OPERATION CLUSTER [--config=CONFIG] [--debug]
 
 decking image operations:
@@ -48,6 +48,10 @@ decking cluster operations:
                     run - Create and start the containers for a given cluster.
 
 Global options:
+    --allow-insecure
+                    Allow pulling/pushing from/to registries using http, not
+                    only https.
+
     --config=CONFIG Define the file to read the decking definition
                     from. JSON and YAML formats are supported.
                     [default: decking.json]
@@ -232,9 +236,9 @@ def main():
             image = opts['WHAT']
             registry = opts.get('REGISTRY')
             if opts['push']:
-                runner.push_thing(image, registry)
+                runner.push_thing(image, registry, opts['--allow-insecure'])
             elif opts['pull']:
-                runner.pull_thing(image, registry)
+                runner.pull_thing(image, registry, opts['--allow-insecure'])
         else:
             command, cluster = opts['OPERATION'], opts['CLUSTER']
             if command in commands:

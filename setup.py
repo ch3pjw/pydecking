@@ -56,7 +56,7 @@ setup(
     packages=find_packages(),
     install_requires=(
         'PyYaml',
-        'docker-py',
+        'docker-py>=0.5.0',
         'docopt',
         'blessings',
         'cerberus'

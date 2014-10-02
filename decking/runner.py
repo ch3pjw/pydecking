@@ -9,6 +9,7 @@ import time
 import json
 from functools import partial
 from copy import deepcopy
+from collections import Sequence
 
 
 class Decking(object):
@@ -320,13 +321,26 @@ class Decking(object):
                 else_()
         return processed
 
+    @staticmethod
+    def _get_cluster_container_names(cluster_spec):
+        '''A cluster spec can be a simple list of container names or a dict of
+        "group" and "containers", unfortunately.
+
+        :returns list: the names of the containers in a cluster
+        '''
+        if isinstance(cluster_spec, Sequence):
+            return cluster_spec
+        else:
+            return cluster_spec['containers']
+
     def _cluster_and_dependency_aware_map(
             self, cluster, func, container_specs, *args, **kwargs):
         if cluster not in self.cluster_specs:
             raise ValueError(
                 'Undefined cluster name {!r}. Defined: {!r}'.format(
                     cluster, ', '.join(self.cluster_specs.keys())))
-        container_names = self.cluster_specs[cluster]
+        container_names = self._get_cluster_container_names(
+            self.cluster_specs[cluster])
         container_specs = self._filter_dict_by_keys(
             container_specs, container_names)
         return self._dependency_aware_map(

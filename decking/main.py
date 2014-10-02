@@ -73,7 +73,33 @@ import docker
 from docopt import docopt, DocoptExit
 from cerberus import Validator
 
+
 def _read_config(opts):
+    container_schema_common = {
+        'port': {
+            'type': 'list',
+            'schema': {'type': 'string'}
+        },
+        'env': {
+            'type': 'list',
+            'schema': {'type': 'string'}
+        },
+        'dependencies': {
+            'type': 'list',
+            'schema': {'type': 'string'}
+        },
+        'mount': {
+            'type': 'list',
+            'schema': {'type': 'string'}
+        },
+        'net': {
+            'type': 'string'
+        },
+        'privileged': {
+            'type': 'boolean',
+        }
+    }
+
     schema = {
         'images': {
             'type': 'dict',
@@ -105,81 +131,32 @@ def _read_config(opts):
             'required': True,
             'keyschema': {
                 'type': 'dict',
-                'schema': {
-                    'image': {
+                'schema': dict(
+                    image={
                         'type': 'string',
                         'required': True
+                    }, **container_schema_common),
+                },
+            },
+        'groups': {
+            'type': 'dict',
+            'keyschema': {
+                'type': 'dict',
+                'schema': {
+                    'options': {
+                        'type': 'dict',
+                        'schema': container_schema_common
                     },
-                    'port': {
-                        'type': 'list',
-                        'schema': {'type': 'string'}
-                    },
-                    'env': {
-                        'type': 'list',
-                        'schema': {'type': 'string'}
-                    },
-                    'dependencies': {
-                        'type': 'list',
-                        'schema': {'type': 'string'}
-                    },
-                    'mount': {
-                        'type': 'list',
-                        'schema': {'type': 'string'}
-                    },
-                    'net': {
-                        'type': 'string'
-                    },
-                    'privileged': {
-                        'type': 'boolean',
+                    'containers': {
+                        'type': 'dict',
+                        'keyschema': {
+                            'type': 'dict',
+                            'schema': container_schema_common
+                        }
                     }
                 }
             }
-        },
-# FIXME: Add support for grouping behaviours
-#        'groups': {
-#            'type': 'dict',
-#            'keyschema': {
-#                'options': {
-#                    'port': {
-#                        'type': 'list',
-#                        'schema': {'type': 'string'}
-#                    },
-#                    'env': {
-#                        'type': 'list',
-#                        'schema': {'type': 'string'}
-#                    },
-#                    'dependencies': {
-#                        'type': 'list',
-#                        'schema': {'type': 'string'}
-#                    },
-#                    'mount': {
-#                        'type': 'list',
-#                        'schema': {'type': 'string'}
-#                    }
-#                },
-#                'containers': {
-#                    'type': 'dict',
-#                    'keyschema': {
-#                        'port': {
-#                            'type': 'list',
-#                            'schema': {'type': 'string'}
-#                        },
-#                        'env': {
-#                            'type': 'list',
-#                            'schema': {'type': 'string'}
-#                        },
-#                        'dependencies': {
-#                            'type': 'list',
-#                            'schema': {'type': 'string'}
-#                        },
-#                        'mount': {
-#                            'type': 'list',
-#                            'schema': {'type': 'string'}
-#                        }
-#                    }
-#                }
-#            }
-#        }
+        }
     }
 
     filename = os.path.expanduser(opts["--config"])

@@ -66,12 +66,34 @@ from __future__ import print_function
 
 import os
 import sys
-from decking.runner import Decking
-from decking.terminal import Terminal
 import yaml
 import docker
+from collections import Mapping, Sequence
+from cerberus import Validator, errors
 from docopt import docopt, DocoptExit
-from cerberus import Validator
+
+from decking.runner import Decking
+from decking.terminal import Terminal
+
+
+class ConfigValidator(Validator):
+    _cluster_config_dict_schema = {
+        'group': {'type': 'string'},
+        'containers': {'type': 'list'}
+    }
+
+    def _validate_type_cluster(self, field, value):
+        if isinstance(value, Sequence):
+            for name in value:
+                if not isinstance(name, basestring):
+                    self._error(
+                        field, 'cluster definition list item {} is not a '
+                        'container name'.format(name))
+        elif isinstance(value, Mapping):
+            self._validate_schema(
+                self._cluster_config_dict_schema, field, value)
+        else:
+            self._error(field, errors.ERROR_BAD_TYPE % 'Mapping or Sequence')
 
 
 def _read_config(opts):
@@ -110,20 +132,7 @@ def _read_config(opts):
         'clusters': {
             'type': 'dict',
             'keyschema': {
-                'type': 'list',
-                'schema': {'type': 'string'}
-# FIXME add support for more complex grouping functionality
-#                'schema': {
-#                    'group': {
-#                        'type': 'string'
-#                    },
-#                    'containers': {
-#                        'type': 'list',
-#                        'schema': {
-#                            'type': 'string'
-#                        }
-#                    }
-#                }
+                'type': 'cluster',
             }
         },
         'containers': {
@@ -163,7 +172,7 @@ def _read_config(opts):
     try:
         with open(filename) as f:
             result = yaml.load(f)
-            validator = Validator()
+            validator = ConfigValidator()
             if not validator.validate(result, schema):
                 raise ValueError(str(validator.errors))
             return result

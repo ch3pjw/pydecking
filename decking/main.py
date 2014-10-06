@@ -96,7 +96,7 @@ class ConfigValidator(Validator):
             self._error(field, errors.ERROR_BAD_TYPE % 'Mapping or Sequence')
 
 
-def _read_config(opts):
+def _validate_config(config_data):
     container_schema_common = {
         'port': {
             'type': 'list',
@@ -167,20 +167,21 @@ def _read_config(opts):
             }
         }
     }
+    validator = ConfigValidator()
+    if not validator.validate(config_data, schema):
+        raise ValueError(str(validator.errors))
 
-    filename = os.path.expanduser(opts["--config"])
+
+def _read_config(filename):
     try:
         with open(filename) as f:
-            result = yaml.load(f)
-            validator = ConfigValidator()
-            if not validator.validate(result, schema):
-                raise ValueError(str(validator.errors))
-            return result
+            config_data = yaml.load(f)
+            _validate_config(config_data)
+            return config_data
     except IOError:
-        raise IOError(
-            "Could not open cluster configuration file " +
-            filename
-        )
+        # FIXME: why do we obliterate the message of the original exception?
+        raise IOError("Could not open cluster configuration file {}".format(
+            filename))
 
 
 def _not_implemented(*args, **kwargs):
@@ -204,7 +205,10 @@ def main():
         docker_client = docker.Client(
             base_url=os.environ.get('DOCKER_HOST'),
             version='1.10', timeout=30)
-        runner = Decking(_read_config(opts), docker_client, terminal)
+        config_filename = os.path.expanduser(opts['--config'])
+        runner = Decking(
+            _read_config(config_filename), docker_client, terminal,
+            base_path=os.path.dirname(config_filename))
         commands = {
             'create': runner.create_cluster,
             'start': runner.start_cluster,

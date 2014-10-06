@@ -22,9 +22,12 @@ class Decking(object):
     All extra kwargs are passed to the docker python client.
     '''
 
-    def __init__(self, decking_config, docker_client, terminal):
+    def __init__(
+            self, decking_config, docker_client, terminal, base_path=''):
         self._raw_image_specs = decking_config.get('images', {})
         self._image_specs = None
+        # Used as base path from which to find Dockerfiles:
+        self._base_path = base_path
         self.container_specs = self._parse_container_specs(
             decking_config['containers'])
         self.cluster_specs = decking_config['clusters']
@@ -50,6 +53,8 @@ class Decking(object):
         '''
         result = {}
         for tag, path in image_specs.items():
+            if not os.path.isabs(path):
+                path = os.path.abspath(os.path.join(self._base_path, path))
             result[tag] = {'path': path}
             with open(os.path.join(path, 'Dockerfile')) as f:
                 dependency = self._parse_dockerfile(f)

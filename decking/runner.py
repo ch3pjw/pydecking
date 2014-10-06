@@ -31,6 +31,7 @@ class Decking(object):
         self.container_specs = self._parse_container_specs(
             decking_config['containers'])
         self.cluster_specs = decking_config['clusters']
+        self.group_specs = decking_config['groups']
         self.client = docker_client
         self._term = terminal
 
@@ -326,35 +327,47 @@ class Decking(object):
                 else_()
         return processed
 
-    @staticmethod
-    def _get_cluster_container_names(cluster_spec):
-        '''A cluster spec can be a simple list of container names or a dict of
-        "group" and "containers", unfortunately.
-
-        :returns list: the names of the containers in a cluster
-        '''
-        if isinstance(cluster_spec, Sequence):
-            return cluster_spec
-        else:
-            return cluster_spec['containers']
-
     def _cluster_and_dependency_aware_map(
-            self, cluster, func, container_specs, *args, **kwargs):
-        if cluster not in self.cluster_specs:
+            self, cluster_name, func, container_specs, group_specs, **kwargs):
+        if cluster_name not in self.cluster_specs:
             raise ValueError(
                 'Undefined cluster name {!r}. Defined: {!r}'.format(
-                    cluster, ', '.join(self.cluster_specs.keys())))
-        container_names = self._get_cluster_container_names(
-            self.cluster_specs[cluster])
+                    cluster_name, ', '.join(self.cluster_specs.keys())))
+        container_specs = self._build_dynamic_container_specs_for_cluster(
+            self.cluster_specs[cluster_name], container_specs, group_specs)
+        return self._dependency_aware_map(func, container_specs, **kwargs)
+
+    def _build_dynamic_container_specs_for_cluster(
+            self, cluster_spec, container_specs, group_specs):
+        '''A cluster spec can be a simple list of container names or a dict of
+        "group" and "containers", unfortunately. Furthermore, when a group is
+        specified, that modifies the specifications of the containers in the
+        cluster.
+
+        :returns dict: A dict specifying all the containers in the cluster
+        '''
+        # FIXME: It might be prudent to turn images, containers, clusters and
+        # groups into full-blown objects, to better manage cross references and
+        # stop us having to make inferences about data all over the place.
+        if isinstance(cluster_spec, Sequence):
+            container_names = cluster_spec
+            group_spec = {'options': {}, 'containers': {}}
+        else:
+            container_names = cluster_spec['containers']
+            group_spec = group_specs[cluster_spec['group']]
         container_specs = self._filter_dict_by_keys(
             container_specs, container_names)
-        return self._dependency_aware_map(
-            func, container_specs, *args, **kwargs)
+        for name, spec in container_specs.items():
+            spec.update(group_spec['options'])
+            container_specific_update = group_spec['containers'].get(name, {})
+            spec.update(container_specific_update)
+        return container_specs
 
     def create_cluster(self, cluster):
         self._populate_live_container_data()
         return self._cluster_and_dependency_aware_map(
-            cluster, self.create_container, self.container_specs)
+            cluster, self.create_container, self.container_specs,
+            self.group_specs)
 
     def _populate_live_container_data(self):
         containers = self.client.containers(all=True, limit=-1)
@@ -370,13 +383,15 @@ class Decking(object):
         return self._cluster_and_dependency_aware_map(
             cluster,
             self.start_container,
-            self.container_specs)
+            self.container_specs,
+            self.group_specs)
 
     def run_cluster(self, cluster):
         return self._cluster_and_dependency_aware_map(
             cluster,
             self.run_container,
-            self.container_specs)
+            self.container_specs,
+            self.group_specs)
 
     def stop_cluster(self, cluster):
         self._populate_live_container_data()
@@ -384,6 +399,7 @@ class Decking(object):
             cluster,
             self.stop_container,
             self.container_specs,
+            self.group_specs,
             reverse=True)
 
     def restart_cluster(self, cluster):
@@ -395,7 +411,8 @@ class Decking(object):
         return self._cluster_and_dependency_aware_map(
             cluster,
             self.remove_container,
-            self.container_specs)
+            self.container_specs,
+            self.group_specs)
 
     def pull_cluster(self, cluster, registry=None, allow_insecure=False):
         return self._cluster_and_dependency_aware_map(
@@ -403,20 +420,23 @@ class Decking(object):
             partial(self.pull_container,
                     registry=registry,
                     allow_insecure=allow_insecure),
-            self.container_specs)
+            self.container_specs,
+            self.group_specs)
 
     def push_cluster(self, cluster, registry):
         return self._cluster_and_dependency_aware_map(
             cluster,
             partial(self.push_container, registry=registry),
-            self.container_specs)
+            self.container_specs,
+            self.group_specs)
 
     def status_cluster(self, cluster):
         self._populate_live_container_data()
         return self._cluster_and_dependency_aware_map(
             cluster,
             self.status_container,
-            self.container_specs)
+            self.container_specs,
+            self.group_specs)
 
     @staticmethod
     def _log_consumer(container, stream, queue):

@@ -78,6 +78,16 @@ class TestDecking(TestCase):
             runner.container_specs['bob2']['instance'],
             self.container_infos[1])
 
+    def test_groups_affect_specs(self):
+        runner = Decking(
+            self.decking_config, self.mock_docker_client, terminal=Mock())
+        container_specs = runner._build_dynamic_container_specs_for_cluster(
+            runner.cluster_specs['with_group'], runner.container_specs,
+            runner.group_specs)
+        for container in container_specs.values():
+            self.assertEqual(container['env'], ["SOME_VAR='not world'"])
+        self.assertEqual(container_specs['bob2']['net'], 'host')
+
     def _prepare_run(self, runner):
         for i, name in enumerate(('alice', 'bob1', 'bob2')):
             runner.container_specs[name]['instance'] = self.container_infos[i]

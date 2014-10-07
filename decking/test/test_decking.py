@@ -1,39 +1,29 @@
 from unittest import TestCase
 from mock import MagicMock, patch, Mock
 import os
+from copy import deepcopy
 import docker
 
 from ..runner import Decking
+from ..main import _read_config
 
 here = os.path.dirname(__file__)
 
 
 @patch('time.sleep', lambda *a: None)
 class TestDecking(TestCase):
+    @classmethod
+    def setUpClass(cls):
+        path = os.path.join(here, 'data', 'example_decking_file.json')
+        # Implicitly tests config validation:
+        cls._decking_config = _read_config(path)
+
     def setUp(self):
-        self.decking_config = {
-            'images': {
-                'repo/alice': os.path.join(here, 'data', 'alice'),
-                'repo/bob': os.path. join(here, 'data', 'bob')
-            },
-            'containers': {
-                'alice': {
-                    'image': 'repo/alice',
-                    'dependencies': ['bob:bob_alias'],
-                    'port': ['1234:2345']
-                },
-                'bob': {
-                    'image': 'repo/bob',
-                    'env': ['A=b']
-                }
-            },
-            'clusters': {
-                'office': ['alice', 'bob']
-            }
-        }
+        # Protect tests from interfering by mutating config:
+        self.decking_config = deepcopy(self._decking_config)
         self.mock_docker_client = MagicMock(spec=docker.Client, instance=True)
-        self.container_info_1 = {'Id': 'abcd1234'}
-        self.container_info_2 = {'Id': 'efab5678'}
+        self.container_ids = 'abcd1234', 'efab5678', 'cdef9012'
+        self.container_infos = [{'Id': id_} for id_ in self.container_ids]
 
     def test_uncolon_mapping(self):
         self.assertEqual(
@@ -51,40 +41,74 @@ class TestDecking(TestCase):
         self.assertEqual(result, 'ubuntu')
 
     def test_build_image(self):
-        runner = Decking(self.decking_config, self.mock_docker_client, Mock())
+        runner = Decking(
+            self.decking_config, self.mock_docker_client, terminal=Mock(),
+            base_path=os.path.join(here, 'data'))
         built = runner.build('all')
         self.assertEqual(built, ['repo/alice', 'repo/bob'])
 
+    def cluster_create_setup(self):
+        runner = Decking(
+            self.decking_config, self.mock_docker_client, terminal=Mock())
+        self.mock_docker_client.create_container.side_effect = (
+            self.container_infos)
+        return runner
+
     def test_create_cluster(self):
-        runner = Decking(self.decking_config, self.mock_docker_client, Mock())
-        self.mock_docker_client.create_container.side_effect = [
-            self.container_info_1, self.container_info_2]
-        created = runner.create_cluster('office')
-        self.assertEqual(created, ['bob', 'alice'])
+        runner = self.cluster_create_setup()
+        created = runner.create_cluster('vanilla')
+        self.assertItemsEqual(created, ['alice', 'bob1', 'bob2'])
+        created_infos = [
+            spec['instance'] for spec in runner.container_specs.values()]
         self.assertEqual(
-            runner.container_specs['bob']['instance'], self.container_info_1)
+            runner.container_specs['alice']['instance'],
+            self.container_infos[0])
+        # A little bit ciruclar, but we check the 'Id's get created correctly:
+        self.assertItemsEqual(created_infos, self.container_infos)
+
+    def test_create_cluster_with_group(self):
+        runner = self.cluster_create_setup()
+        created = runner.create_cluster('with_group')
+        # Created in dependency order:
+        self.assertEqual(created, ['alice', 'bob2'])
         self.assertEqual(
-            runner.container_specs['alice']['instance'], self.container_info_2)
+            runner.container_specs['alice']['instance'],
+            self.container_infos[0])
+        self.assertEqual(
+            runner.container_specs['bob2']['instance'],
+            self.container_infos[1])
+
+    def test_groups_affect_specs(self):
+        runner = Decking(
+            self.decking_config, self.mock_docker_client, terminal=Mock())
+        container_specs = runner._build_dynamic_container_specs_for_cluster(
+            runner.cluster_specs['with_group'], runner.container_specs,
+            runner.group_specs)
+        for container in container_specs.values():
+            self.assertEqual(container['env'], ["SOME_VAR='not world'"])
+        self.assertEqual(container_specs['bob2']['net'], 'host')
 
     def _prepare_run(self, runner):
-        runner.container_specs['bob']['instance'] = self.container_info_1
-        runner.container_specs['alice']['instance'] = self.container_info_2
+        for i, name in enumerate(('alice', 'bob1', 'bob2')):
+            runner.container_specs[name]['instance'] = self.container_infos[i]
 
     def test_start_cluster(self):
-        runner = Decking(self.decking_config, self.mock_docker_client, Mock())
+        runner = Decking(
+            self.decking_config, self.mock_docker_client, terminal=Mock())
         self.assertRaisesRegexp(
-            RuntimeError, 'Must create', runner.start_cluster, 'office')
+            RuntimeError, 'Must create', runner.start_cluster, 'vanilla')
         self._prepare_run(runner)
-        runner.start_cluster('office')
+        runner.start_cluster('vanilla')
 
     def test_cluster_not_found(self):
-        runner = Decking(self.decking_config, self.mock_docker_client, Mock())
+        runner = Decking(
+            self.decking_config, self.mock_docker_client, terminal=Mock())
         self._prepare_run(runner)
         self.assertRaisesRegexp(
             ValueError, "Undefined cluster.*pub", runner.start_cluster, 'pub')
 
-    def test_bad_depenencies(self):
-        decking_config = {
+    def test_bad_dependencies(self):
+        self.decking_config.update({
             'containers': {
                 'zen': {
                     'image': 'repo/zen',
@@ -94,11 +118,12 @@ class TestDecking(TestCase):
             'clusters': {
                 'dojo': ['zen']
             }
-        }
-        runner = Decking(decking_config, self.mock_docker_client, Mock())
+        })
+        runner = Decking(
+            self.decking_config, self.mock_docker_client, terminal=Mock())
         self.assertRaisesRegexp(
             RuntimeError, 'dependencies', runner.start_cluster, 'dojo')
-        decking_config = {
+        self.decking_config.update({
             'containers': {
                 'zen': {
                     'image': 'repo/zen',
@@ -112,8 +137,9 @@ class TestDecking(TestCase):
             'clusters': {
                 'dojo': ['zen', 'yen']
             }
-        }
-        runner = Decking(decking_config, self.mock_docker_client, Mock())
+        })
+        runner = Decking(
+            self.decking_config, self.mock_docker_client, terminal=Mock())
         self.assertRaisesRegexp(
             RuntimeError, 'dependencies', runner.start_cluster, 'dojo')
 
@@ -122,7 +148,7 @@ class TestDecking(TestCase):
         if registry:
             remote_image_path = '{}/{}'.format(registry, image_path)
 
-        decking_config = {
+        self.decking_config.update({
             'containers': {
                 'zen': {
                     'image': image_path,
@@ -131,8 +157,9 @@ class TestDecking(TestCase):
             'clusters': {
                 'dojo': ['zen']
             }
-        }
-        runner = Decking(decking_config, self.mock_docker_client, Mock())
+        })
+        runner = Decking(
+            self.decking_config, self.mock_docker_client, terminal=Mock())
         runner.pull_cluster(
             cluster='dojo',
             registry=registry,

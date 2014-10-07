@@ -1,0 +1,45 @@
+{
+    "images": {
+        "repo/alice": "./alice",
+        "repo/bob": "./bob"
+    },
+    "containers": {
+        "bob1": {
+            "image": "repo/bob",
+            "port": ["1111:1111"],
+            "dependencies": ["alice:alice_alias"],
+            "env": ["SOME_VAR='hello world'"],
+            "net": "host",
+            "mount": ["tmp/bob1:/tmp"]
+        },
+        "bob2": {
+            "image": "repo/bob",
+            "port": ["2222:1111"],
+            "dependencies": ["alice:alice_alias"],
+            "mount": ["tmp/bob2:/tmp"]
+        },
+        "alice": {
+            "image": "repo/alice",
+            "port": ["1234:2345"]
+        }
+    },
+    "clusters": {
+        "vanilla": ["alice", "bob1", "bob2"],
+        "with_group": {
+            "group": "additional_config",
+            "containers": ["alice", "bob2"]
+        }
+    },
+    "groups": {
+        "additional_config": {
+            "options": {
+                "env": ["SOME_VAR='not world'"]
+            },
+            "containers": {
+                "bob2": {
+                    "net": "host"
+                }
+            }
+        }
+    }
+}

@@ -66,14 +66,62 @@ from __future__ import print_function
 
 import os
 import sys
-from decking.runner import Decking
-from decking.terminal import Terminal
 import yaml
 import docker
+from collections import Mapping, Sequence
+from cerberus import Validator, errors
 from docopt import docopt, DocoptExit
-from cerberus import Validator
 
-def _read_config(opts):
+from decking.runner import Decking
+from decking.terminal import Terminal
+
+
+class ConfigValidator(Validator):
+    _cluster_config_dict_schema = {
+        'group': {'type': 'string'},
+        'containers': {'type': 'list'}
+    }
+
+    def _validate_type_cluster(self, field, value):
+        if isinstance(value, Sequence):
+            for name in value:
+                if not isinstance(name, basestring):
+                    self._error(
+                        field, 'cluster definition list item {} is not a '
+                        'container name'.format(name))
+        elif isinstance(value, Mapping):
+            self._validate_schema(
+                self._cluster_config_dict_schema, field, value)
+        else:
+            self._error(field, errors.ERROR_BAD_TYPE % 'Mapping or Sequence')
+
+
+def _validate_config(config_data):
+    container_schema_common = {
+        'port': {
+            'type': 'list',
+            'schema': {'type': 'string'}
+        },
+        'env': {
+            'type': 'list',
+            'schema': {'type': 'string'}
+        },
+        'dependencies': {
+            'type': 'list',
+            'schema': {'type': 'string'}
+        },
+        'mount': {
+            'type': 'list',
+            'schema': {'type': 'string'}
+        },
+        'net': {
+            'type': 'string'
+        },
+        'privileged': {
+            'type': 'boolean',
+        }
+    }
+
     schema = {
         'images': {
             'type': 'dict',
@@ -84,20 +132,7 @@ def _read_config(opts):
         'clusters': {
             'type': 'dict',
             'keyschema': {
-                'type': 'list',
-                'schema': {'type': 'string'}
-# FIXME add support for more complex grouping functionality
-#                'schema': {
-#                    'group': {
-#                        'type': 'string'
-#                    },
-#                    'containers': {
-#                        'type': 'list',
-#                        'schema': {
-#                            'type': 'string'
-#                        }
-#                    }
-#                }
+                'type': 'cluster',
             }
         },
         'containers': {
@@ -105,96 +140,48 @@ def _read_config(opts):
             'required': True,
             'keyschema': {
                 'type': 'dict',
-                'schema': {
-                    'image': {
+                'schema': dict(
+                    image={
                         'type': 'string',
                         'required': True
+                    }, **container_schema_common),
+                },
+            },
+        'groups': {
+            'type': 'dict',
+            'keyschema': {
+                'type': 'dict',
+                'schema': {
+                    'options': {
+                        'type': 'dict',
+                        'schema': container_schema_common
                     },
-                    'port': {
-                        'type': 'list',
-                        'schema': {'type': 'string'}
-                    },
-                    'env': {
-                        'type': 'list',
-                        'schema': {'type': 'string'}
-                    },
-                    'dependencies': {
-                        'type': 'list',
-                        'schema': {'type': 'string'}
-                    },
-                    'mount': {
-                        'type': 'list',
-                        'schema': {'type': 'string'}
-                    },
-                    'net': {
-                        'type': 'string'
-                    },
-                    'privileged': {
-                        'type': 'boolean',
+                    'containers': {
+                        'type': 'dict',
+                        'keyschema': {
+                            'type': 'dict',
+                            'schema': container_schema_common
+                        }
                     }
                 }
             }
-        },
-# FIXME: Add support for grouping behaviours
-#        'groups': {
-#            'type': 'dict',
-#            'keyschema': {
-#                'options': {
-#                    'port': {
-#                        'type': 'list',
-#                        'schema': {'type': 'string'}
-#                    },
-#                    'env': {
-#                        'type': 'list',
-#                        'schema': {'type': 'string'}
-#                    },
-#                    'dependencies': {
-#                        'type': 'list',
-#                        'schema': {'type': 'string'}
-#                    },
-#                    'mount': {
-#                        'type': 'list',
-#                        'schema': {'type': 'string'}
-#                    }
-#                },
-#                'containers': {
-#                    'type': 'dict',
-#                    'keyschema': {
-#                        'port': {
-#                            'type': 'list',
-#                            'schema': {'type': 'string'}
-#                        },
-#                        'env': {
-#                            'type': 'list',
-#                            'schema': {'type': 'string'}
-#                        },
-#                        'dependencies': {
-#                            'type': 'list',
-#                            'schema': {'type': 'string'}
-#                        },
-#                        'mount': {
-#                            'type': 'list',
-#                            'schema': {'type': 'string'}
-#                        }
-#                    }
-#                }
-#            }
-#        }
+        }
     }
+    validator = ConfigValidator()
+    if not validator.validate(config_data, schema):
+        raise ValueError(str(validator.errors))
 
-    filename = os.path.expanduser(opts["--config"])
+
+def _read_config(filename):
     try:
         with open(filename) as f:
-            result = yaml.load(f)
-            validator = Validator()
-            if not validator.validate(result, schema):
-                raise ValueError(str(validator.errors))
-            return result
+            config_data = yaml.load(f)
+            _validate_config(config_data)
+            return config_data
     except IOError:
-        raise IOError(
-            "Could not open cluster configuration file " +
-            filename
-        )
+        # FIXME: why do we obliterate the message of the original exception?
+        raise IOError("Could not open cluster configuration file {}".format(
+            filename))
 
 
 def _not_implemented(*args, **kwargs):
@@ -218,7 +205,10 @@ def main():
         docker_client = docker.Client(
             base_url=os.environ.get('DOCKER_HOST'),
             version='1.10', timeout=30)
-        runner = Decking(_read_config(opts), docker_client, terminal)
+        config_filename = os.path.expanduser(opts['--config'])
+        runner = Decking(
+            _read_config(config_filename), docker_client, terminal,
+            base_path=os.path.dirname(config_filename))
         commands = {
             'create': runner.create_cluster,
             'start': runner.start_cluster,

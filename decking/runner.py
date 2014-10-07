@@ -34,7 +34,7 @@ class Decking(object):
         self.container_specs = self._parse_container_specs(
             decking_config['containers'])
         self.cluster_specs = decking_config['clusters']
-        self.group_specs = decking_config['groups']
+        self.group_specs = decking_config.get('groups', {})
         self.client = docker_client
         self._term = terminal
 

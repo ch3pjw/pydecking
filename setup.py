@@ -12,12 +12,15 @@ versioneer.parentdir_prefix = '{}-'.format(_NAME)
 
 
 def pep440_version(versioneer_version):
-    parts = re.match(
+    mo = re.match(
         '(?P<number>[0-9.]+)'
         '(?:-(?P<distance>[1-9][0-9]*))?'
         '(?:-(?P<revision>g[0-9a-f]{7}))?'
         '(?:-(?P<dirty>dirty))?', versioneer_version
-        ).groupdict()
+        )
+    if not mo:
+        return versioneer_version
+    parts = mo.groupdict()
     version = parts['number']
     if parts['distance']:
         version += '.post0.dev' + parts['distance']

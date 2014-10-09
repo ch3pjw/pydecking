@@ -37,7 +37,8 @@
             },
             "containers": {
                 "bob2": {
-                    "net": "host"
+                    "net": "host",
+                    "privileged": true
                 }
             }
         }

@@ -67,106 +67,14 @@ from __future__ import print_function
 import os
 import sys
 import yaml
-import docker
-from collections import Mapping, Sequence
-from cerberus import Validator, errors
 from docopt import docopt, DocoptExit
 
 from decking.runner import Decking
 from decking.terminal import Terminal
-
-
-class ConfigValidator(Validator):
-    _cluster_config_dict_schema = {
-        'group': {'type': 'string'},
-        'containers': {'type': 'list'}
-    }
-
-    def _validate_type_cluster(self, field, value):
-        if isinstance(value, Sequence):
-            for name in value:
-                if not isinstance(name, basestring):
-                    self._error(
-                        field, 'cluster definition list item {} is not a '
-                        'container name'.format(name))
-        elif isinstance(value, Mapping):
-            self._validate_schema(
-                self._cluster_config_dict_schema, field, value)
-        else:
-            self._error(field, errors.ERROR_BAD_TYPE % 'Mapping or Sequence')
+from decking.schema import ConfigValidator, schema
 
 
 def _validate_config(config_data):
-    container_schema_common = {
-        'port': {
-            'type': 'list',
-            'schema': {'type': 'string'}
-        },
-        'env': {
-            'type': 'list',
-            'schema': {'type': 'string'}
-        },
-        'dependencies': {
-            'type': 'list',
-            'schema': {'type': 'string'}
-        },
-        'mount': {
-            'type': 'list',
-            'schema': {'type': 'string'}
-        },
-        'net': {
-            'type': 'string'
-        },
-        'privileged': {
-            'type': 'boolean',
-        }
-    }
-
-    schema = {
-        'images': {
-            'type': 'dict',
-            'keyschema': {
-                'type': 'string'
-            }
-        },
-        'clusters': {
-            'type': 'dict',
-            'keyschema': {
-                'type': 'cluster',
-            }
-        },
-        'containers': {
-            'type': 'dict',
-            'required': True,
-            'keyschema': {
-                'type': 'dict',
-                'schema': dict(
-                    image={
-                        'type': 'string',
-                        'required': True
-                    }, **container_schema_common),
-                },
-            },
-        'groups': {
-            'type': 'dict',
-            'keyschema': {
-                'type': 'dict',
-                'schema': {
-                    'options': {
-                        'type': 'dict',
-                        'schema': container_schema_common
-                    },
-                    'containers': {
-                        'type': 'dict',
-                        'keyschema': {
-                            'type': 'dict',
-                            'schema': container_schema_common
-                        }
-                    }
-                }
-            }
-        }
-    }
     validator = ConfigValidator()
     if not validator.validate(config_data, schema):
         raise ValueError(str(validator.errors))
@@ -202,22 +110,18 @@ def main():
     terminal = Terminal()
 
     try:
-        docker_client = docker.Client(
-            base_url=os.environ.get('DOCKER_HOST'),
-            version='1.10', timeout=30)
         config_filename = os.path.expanduser(opts['--config'])
-        runner = Decking(
-            _read_config(config_filename), docker_client, terminal,
-            base_path=os.path.dirname(config_filename))
+        base_path = os.path.dirname(config_filename)
+        runner = Decking(_read_config(config_filename), base_path)
         commands = {
-            'create': runner.create_cluster,
-            'start': runner.start_cluster,
-            'run': runner.run_cluster,
-            'stop': runner.stop_cluster,
-            'remove': runner.remove_cluster,
-            'restart': runner.restart_cluster,
-            'status': runner.status_cluster,
-            'attach': runner.attach_cluster,
+            'create': runner.create,
+            'start': runner.start,
+            'run': runner.run,
+            'stop': runner.stop,
+            'remove': runner.remove,
+            'restart': runner.restart,
+            'status': runner.status,
+            'attach': runner.attach,
         }
 
         if opts['build']:

@@ -28,3 +28,5 @@ class Terminal(blessings.Terminal):
         print("----->", self.yellow(title))
         for line in lines:
             self.print_warning_line(line)
+
+term = Terminal()

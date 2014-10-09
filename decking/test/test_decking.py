@@ -10,8 +10,83 @@ from ..main import _read_config
 here = os.path.dirname(__file__)
 
 
-@patch('time.sleep', lambda *a: None)
 class TestDecking(TestCase):
+    @classmethod
+    def setUpClass(cls):
+        path = os.path.join(here, 'data', 'example_decking_file.json')
+        # Implicitly tests config validation:
+        cls._decking_config = _read_config(path)
+
+    def setUp(self):
+        # Protect tests from interfering by mutating config:
+        self.decking_config = deepcopy(self._decking_config)
+        self.docker_client = MagicMock(spec=docker.Client)
+
+    def test_config_processing(self):
+        base_path = os.path.join(os.sep, 'somewhere')
+        decking = Decking(self.decking_config, base_path, self.docker_client)
+        # Images:
+        for name in 'alice', 'bob':
+            expected = os.path.join(base_path, name, 'Dockerfile')
+            self.assertEqual(decking.images['repo/' + name].path, expected)
+        # Containers:
+        cont = decking.containers['alice']
+        self.assertEqual(cont.name, 'alice')
+        self.assertIs(cont.image, decking.images['repo/alice'])
+        self.assertEqual(cont.port_bindings, {'1234': '2345'})
+        cont = decking.containers['bob1']
+        self.assertEqual(cont.environment, {'SOME_VAR': "'hello world'"})
+        self.assertEqual(cont.net, 'host')
+        self.assertEqual(
+            cont.dependencies, {decking.containers['alice']: 'alice_alias'})
+        expected = {os.path.join(base_path, 'tmp', 'bob1'): '/tmp'}
+        self.assertEqual(cont.volume_bindings, expected)
+        cont = decking.containers['bob2']
+        self.assertEqual(cont.port_bindings, {'2222': '1111'})
+        # Groups:
+        group = decking.groups['additional_config']
+        self.assertEqual(
+            group.options.environment, {'SOME_VAR': "'not world'"})
+        self.assertEqual(group.per_container_specs[cont].net, 'host')
+        self.assertEqual(group.per_container_specs[cont].privileged, True)
+        # Clusters:
+        self.assertEqual(
+            decking.clusters['vanilla'].containers,
+            [decking.containers[name] for name in ('alice', 'bob1', 'bob2')])
+        self.assertEqual(
+            decking.clusters['with_group'].containers,
+            [decking.containers[name] for name in ('alice', 'bob2')])
+        self.assertIs(
+            decking.clusters['with_group'].group,
+            decking.groups['additional_config'])
+
+    def test_live_container_info(self):
+        live_data = [
+            {
+                u'Status': u'', u'Created': 1412867823,
+                u'Image': u'repo/alice_image:latest', u'Ports': [],
+                u'Command': u'ping localhost',
+                u'Names': [u'/alice'],
+                u'Id': u'183612dfe2c984e7363417dd7deb6c7a23e5eecfa5d5d9433be8',
+            },
+            {
+                u'Status': u'', u'Created': 1412867769,
+                u'Image': u'repo/bob1:latest', u'Ports': [],
+                u'Command': u'ping localhost',
+                u'Names': [u'/bob1'],
+                u'Id': u'7295655e7ff050bddbac5d72e5dc289eb1fad8fd008e2e0ed552',
+            }
+        ]
+        self.docker_client.containers.return_value = live_data
+        decking = Decking(
+            self.decking_config, docker_client=self.docker_client)
+        self.assertTrue(decking.containers['alice'].created)
+        self.assertTrue(decking.containers['bob1'].created)
+        self.assertFalse(decking.containers['bob2'].created)
+
+
+@patch('time.sleep', lambda *a: None)
+class OldTestDecking(TestCase):
     @classmethod
     def setUpClass(cls):
         path = os.path.join(here, 'data', 'example_decking_file.json')
@@ -24,21 +99,6 @@ class TestDecking(TestCase):
         self.mock_docker_client = MagicMock(spec=docker.Client, instance=True)
         self.container_ids = 'abcd1234', 'efab5678', 'cdef9012'
         self.container_infos = [{'Id': id_} for id_ in self.container_ids]
-
-    def test_uncolon_mapping(self):
-        self.assertEqual(
-            Decking._uncolon_mapping(['a:b', 'c:d']),
-            {'a': 'b', 'c': 'd'})
-
-    def test_filter_dict_by_keys(self):
-        result = Decking._filter_dict_by_keys(
-            {'a': 'hello', 'b': 'world', 'c': 'toast'}, ['a', 'c'])
-        self.assertEqual(result, {'a': 'hello', 'c': 'toast'})
-
-    def test_parse_dockerfile(self):
-        with open(os.path.join(here, 'data', 'alice', 'Dockerfile')) as f:
-            result = Decking._parse_dockerfile(f)
-        self.assertEqual(result, 'ubuntu')
 
     def test_build_image(self):
         runner = Decking(

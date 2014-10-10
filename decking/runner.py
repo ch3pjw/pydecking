@@ -126,11 +126,36 @@ class Decking(object):
                     self.containers[name]._docker_container_info = (
                         container_info)
 
+    def _get_images_by_name(self, name):
+        if name == 'all':
+            return self.images
+        elif name in self.images:
+            return {name: self.images[name]}
+        elif name in self.clusters:
+            return {
+                container.image.name: container.image for container in
+                self.clusters[name]}
+        else:
+            raise ValueError("Can't find enity named {!r}".format(name))
+
+    @staticmethod
+    def _iter_images_by_dependency(images):
+        images_dependency_names = {}
+        for name, image in images.items():
+            # Remove external dependencies:
+            dependencies = filter(lambda n: n in images, image.dependencies)
+            images_dependency_names[name] = dependencies
+        for image_name in iter_dependencies(
+                images, images_dependency_names.__getitem__):
+            yield images[image_name]
+
     def build(self, image_name):
-        if image_name == 'all':
-            return  # FIXME: dependency aware map thing
-        raise NotImplementedError(
-            'You can only build all images right now')
+        built = []
+        for image in self._iter_images_by_dependency(
+                self._get_images_by_name(image_name)):
+            image.build()
+            built.append(image)
+        return built
 
     def create(self, name):
         return self.clusters[name].create()
@@ -156,16 +181,6 @@ class Decking(object):
 
     def attach(self, name):
         return self.clusters[name].attach()
-
-    def _get_images_by_name(self, name):
-        if name == 'all':
-            return self.images
-        elif name in self.images:
-            return [self.images[name]]
-        elif name in self.clusters:
-            return [container.image for container in self.clusters[name]]
-        else:
-            ValueError("Can't find enity named {!r}".format(name))
 
     def push(self, name, *args, **kwargs):
         for image in self._get_images_by_name(name):

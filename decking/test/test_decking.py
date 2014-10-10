@@ -84,6 +84,20 @@ class TestDecking(TestCase):
         self.assertTrue(decking.containers['bob1'].created)
         self.assertFalse(decking.containers['bob2'].created)
 
+    def test_build(self):
+        base_path = os.path.join(here, 'data')
+        decking = Decking(
+            self.decking_config, base_path, self.docker_client)
+        built = decking.build('all')
+        def expected(*names):
+            return [decking.images['repo/' + name] for name in names]
+        self.assertItemsEqual(built, expected('unused', 'alice', 'bob'))
+        built = decking.build('vanilla')
+        self.assertEqual(built, expected('alice', 'bob'))
+        built = decking.build('repo/bob')
+        self.assertEqual(built, expected('bob'))
+        self.assertRaisesRegexp(ValueError, 'tosh', decking.build, 'tosh')
+
 
 @patch('time.sleep', lambda *a: None)
 class OldTestDecking(TestCase):
@@ -99,13 +113,6 @@ class OldTestDecking(TestCase):
         self.mock_docker_client = MagicMock(spec=docker.Client, instance=True)
         self.container_ids = 'abcd1234', 'efab5678', 'cdef9012'
         self.container_infos = [{'Id': id_} for id_ in self.container_ids]
-
-    def test_build_image(self):
-        runner = Decking(
-            self.decking_config, self.mock_docker_client, terminal=Mock(),
-            base_path=os.path.join(here, 'data'))
-        built = runner.build('all')
-        self.assertEqual(built, ['repo/alice', 'repo/bob'])
 
     def cluster_create_setup(self):
         runner = Decking(

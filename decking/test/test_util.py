@@ -1,13 +1,9 @@
 from unittest import TestCase
 
-from decking.util import delimit_mapping, undelimit_mapping, iter_dependencies
+from decking.util import undelimit_mapping, iter_dependencies
 
 
 class TestUtil(TestCase):
-    def test_delimit_mapping(self):
-        self.assertItemsEqual(
-            delimit_mapping({'a': 1, 'b': 2}), ['a=1', 'b=2'])
-
     def test_undelimit_mapping(self):
         self.assertEqual(
             undelimit_mapping(['a:b', 'c:d']),

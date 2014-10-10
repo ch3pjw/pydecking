@@ -3,15 +3,6 @@ import json
 from decking.terminal import term
 
 
-def delimit_mapping(mapping, delimiter=':'):
-    '''
-    Takes a mapping and turns it into a sequence of strings of the form:
-      ['a:b', 'c:d']
-    '''
-    format_string = '{}' + delimiter + '{}'
-    return map(lambda item: format_string.format(*item), mapping.items())
-
-
 def undelimit_mapping(
         mapping_as_sequence, delimiter=':', reverse_mapping=False):
     '''

@@ -2,6 +2,7 @@ from unittest import TestCase
 from mock import Mock, MagicMock, call
 
 import os
+import json
 import docker
 
 from decking.terminal import Terminal
@@ -39,6 +40,11 @@ class BaseTest(TestCase):
 
 
 class TestImage(BaseTest):
+    def setUp(self):
+        super(TestImage, self).setUp()
+        self.stream = [
+            json.dumps({'stream': 'stream\nof\narbitrary\nwords'})] * 2
+
     def test_parse_dockerfile(self):
         path = os.path.join(here, 'data', 'alice', 'Dockerfile')
         result = Image._parse_dockerfile(path)
@@ -53,6 +59,29 @@ class TestImage(BaseTest):
     def test_repr(self):
         self.assertIn('Image', repr(self.image))
         self.assertIn('image_name', repr(self.image))
+
+    def test_build(self):
+        self.docker_client.build.return_value = self.stream
+        self.image.build()
+        self.docker_client.build.assert_called_once_with(
+            'some/path', tag='image_name', rm=True)
+
+    def test_push(self):
+        self.docker_client.push.return_value = self.stream
+        self.image.push('some-registry.domain.com', allow_insecure='testing')
+        self.docker_client.push.assert_called_once_with(
+            'some-registry.domain.com/image_name', insecure_registry='testing',
+            stream=True)
+
+    def test_pull(self):
+        self.docker_client.pull.return_value = self.stream
+        self.image.pull()
+        self.docker_client.pull.assert_called_with(
+            'image_name', insecure_registry=False, stream=True)
+        self.image.pull('some-registry.domain.com', allow_insecure='testing')
+        self.docker_client.pull.assert_called_with(
+            'some-registry.domain.com/image_name', insecure_registry='testing',
+            stream=True)
 
 
 class TestContainer(BaseTest):

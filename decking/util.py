@@ -52,5 +52,5 @@ def iter_dependencies(to_process, get_item_dependencies):
                 pending.add(item)
                 yield item
         if not pending:
-            raise RuntimeError('Circular dependencies?')
+            raise RuntimeError('Missing or circular dependencies')
         processed |= pending

@@ -30,6 +30,6 @@ class TestUtil(TestCase):
             'a': {'dependencies': 'b'},
             'b': {'dependencies': 'a'}
         }
-        with self.assertRaisesRegexp(RuntimeError, 'Circular'):
+        with self.assertRaisesRegexp(RuntimeError, 'circular'):
             for item in iter_dependencies(data, get_item_dependencies):
                 pass

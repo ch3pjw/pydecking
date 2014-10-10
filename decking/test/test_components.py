@@ -23,7 +23,8 @@ class BaseTest(TestCase):
             dependencies={self.dependency: 'dependency_alias'},
             volume_bindings={'/tmp/': '/normalised/local/foo/'})
         self.cluster = Cluster(
-            self.docker_client, 'cluster_name', [self.container])
+            self.docker_client, 'cluster_name',
+            [self.container, self.dependency])
         self.group = Group(
             name='fluffy',
             options=ContainerData(
@@ -145,12 +146,15 @@ class TestContainer(BaseTest):
 
 class TestCluster(BaseTest):
     def test_attach(self):
-        stream = ['hello', 'world']
+        stream = 'hello', 'world'
         self.docker_client.attach.return_value = stream
         term = Mock(spec=Terminal)
         self.cluster.attach(term)
-        term.print_step.assert_called_with(self.container.name)
-        term.print_line.assert_has_calls([call('hello'), call('world')])
+        term.print_step.assert_has_calls(
+            [call(self.container.name), call(self.dependency.name)],
+            any_order=True)
+        term.print_line.assert_has_calls([call('hello'), call('world')] * 2)
         term.print_warning.has_calls([
             call('{}: detached'.format(self.container.name)),
-            call('All containers detached')])
+            call('{}: detached'.format(self.dependency.name)),
+            call('All containers detached')], any_order=True)

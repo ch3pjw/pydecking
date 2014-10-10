@@ -253,7 +253,6 @@ class Cluster(Named):
         self._docker_client = docker_client
         self.containers = containers
         self.group = group
-        self._attached = set()
 
     def __iter__(self):
         return iter_dependencies(self.containers, lambda c: c.dependencies)
@@ -282,12 +281,12 @@ class Cluster(Named):
         for container in reversed(tuple(self)):
             container.remove()
 
-    def _display_logs(self, log_queue, term):
+    def _display_logs(self, attached, log_queue, term):
         current_container = None, None
-        while self._attached:
+        while attached:
             container, line = log_queue.get()
             if line is END_OF_STREAM:
-                self._attached.remove(container)
+                attached.remove(container)
                 term.print_warning('{}: detached'.format(container))
             else:
                 if container != current_container:
@@ -297,9 +296,10 @@ class Cluster(Named):
         term.print_warning('All containers detached')
 
     def attach(self, term=term):
+        attached = set()
         threads = []
         log_queue = Queue()
         for container in self:
-            self._attached.add(container.name)
+            attached.add(container.name)
             threads.append(container.attach(log_queue))
-        self._display_logs(log_queue, term)
+        self._display_logs(attached, log_queue, term)

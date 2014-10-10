@@ -14,12 +14,27 @@ class BaseTest(TestCase):
     def setUp(self):
         self.docker_client = MagicMock(spec=docker.Client)
         self.image = Image(self.docker_client, 'image_name', 'some/path')
+        self.dependency = Container(
+            self.docker_client, 'dependency_name', self.image)
         self.container = Container(
             self.docker_client, 'container_name', self.image,
             port_bindings={'1111': '2222'}, environment={'moose': 'pants'},
-            net='host', privileged=True, volume_bindings={'./tmp/foo/:/tmp/'})
+            net='host', privileged=True,
+            dependencies={self.dependency: 'dependency_alias'},
+            volume_bindings={'/tmp/': '/normalised/local/foo/'})
         self.cluster = Cluster(
             self.docker_client, 'cluster_name', [self.container])
+        self.group = Group(
+            name='fluffy',
+            options=ContainerData(
+                'unimportant', environment={
+                    'moose': 'overridden', 'pants': 'extra'}),
+            per_container_specs={
+                'alice': ContainerData(
+                    'never used', environment={'moose': 'llama'}),
+                'container_name': ContainerData(
+                    'never used', environment={'more': 'extra extra'},
+                    volume_bindings={'/tmp/': '/normalised/local/bar/'})})
 
 
 class TestImage(BaseTest):
@@ -40,6 +55,15 @@ class TestImage(BaseTest):
 
 
 class TestContainer(BaseTest):
+    def fake_container_create(self):
+        self.container._docker_container_info = {
+            u'Status': u'', u'Created': 1412867823,
+            u'Image': u'{}:latest'.format(self.container.name), u'Ports': [],
+            u'Command': u'ping localhost',
+            u'Names': [u'/alice'],
+            u'Id': u'183612dfe2c984e7363417dd7deb6c7a23e5eecfa5d5d9433be8',
+        }
+
     def test_create(self):
         with self.assertRaisesRegexp(RuntimeError, 'not created'):
             self.container.id
@@ -51,26 +75,72 @@ class TestContainer(BaseTest):
         self.container.create()
         self.assertEqual(self.container.id, '1234')
 
-    def test_create_with_group(self):
-        group = Group(
-            name='fluffy',
-            options=ContainerData(
-                'unimportant', environment={
-                    'moose': 'overridden', 'pants': 'extra'}),
-            per_container_specs={
-                'alice': ContainerData(
-                    'never used', environment={'moose': 'llama'}),
-                'container_name': ContainerData(
-                    'never used', environment={'more': 'extra extra'})})
-        self.container.create(group)
-        expected_env = Container._format_environment({
-            'moose': 'overridden', 'pants': 'extra', 'more': 'extra extra'})
+    def assert_docker_create_with_group(self):
         expected_env = {
             'moose': 'overridden', 'pants': 'extra', 'more': 'extra extra'}
         self.docker_client.create_container.assert_called_once_with(
             'image_name', name='container_name',
             environment=expected_env, ports=['1111'])
 
+    def test_create_with_group(self):
+        self.container.create(self.group)
+        self.assert_docker_create_with_group()
+
+    def assert_docker_start(self):
+        self.docker_client.start.assert_called_once_with(
+            self.container._docker_container_info,
+            binds={'/tmp/': {'bind': '/normalised/local/foo/', 'ro': False}},
+            links={'dependency_name': 'dependency_alias'},
+            port_bindings={'1111': '2222'},
+            privileged=True,
+            network_mode='host')
+
+    def test_start(self):
+        self.fake_container_create()
+        self.container.start()
+        self.assert_docker_start()
+
+    def assert_docker_start_with_group(self):
+        self.docker_client.start.assert_called_once_with(
+            self.container._docker_container_info,
+            binds={'/tmp/': {'bind': '/normalised/local/bar/', 'ro': False}},
+            links={'dependency_name': 'dependency_alias'},
+            port_bindings={'1111': '2222'},
+            privileged=True,
+            network_mode='host')
+
+    def test_start_with_group(self):
+        self.fake_container_create()
+        self.container.start(self.group)
+        self.assert_docker_start_with_group()
+
+    def test_run(self):
+        self.container.run()
+        self.assert_docker_start()
+
+    def test_run_with_group(self):
+        self.container.run(self.group)
+        self.assert_docker_create_with_group()
+        self.assert_docker_start_with_group()
+
+    def test_stop(self):
+        self.fake_container_create()
+        self.container.stop()
+        self.assertTrue(self.docker_client.stop.called)
+
+    def test_status(self):
+        self.container.status()
+        self.fake_container_create()
+        self.container.status()
+        self.container._docker_container_info['Status'] = 'Up'
+        self.container.status()
+
+    def test_remove(self):
+        self.fake_container_create()
+        self.docker_client.remove_container.side_effect = (
+            docker.errors.APIError("Arg, things broke", response=Mock()))
+        self.container.remove()
+        self.assertTrue(self.docker_client.remove_container.called)
 
 
 class TestCluster(BaseTest):

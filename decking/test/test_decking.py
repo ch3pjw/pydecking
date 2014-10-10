@@ -39,7 +39,7 @@ class TestDecking(TestCase):
         self.assertEqual(cont.net, 'host')
         self.assertEqual(
             cont.dependencies, {decking.containers['alice']: 'alice_alias'})
-        expected = {os.path.join(base_path, 'tmp', 'bob1'): '/tmp'}
+        expected = {'/tmp': os.path.join(base_path, 'tmp', 'bob1')}
         self.assertEqual(cont.volume_bindings, expected)
         cont = decking.containers['bob2']
         self.assertEqual(cont.port_bindings, {'2222': '1111'})

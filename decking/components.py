@@ -158,7 +158,7 @@ class Container(ContainerData):
     def _format_volume_bindings(volume_bindings):
         return {
             container_path: {'bind': local_path, 'ro': False} for
-            local_path, container_path in volume_bindings.items()}
+            container_path, local_path in volume_bindings.items()}
 
     @assert_created
     def start(self, group=None):

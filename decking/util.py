@@ -12,17 +12,25 @@ def delimit_mapping(mapping, delimiter=':'):
     return map(lambda item: format_string.format(*item), mapping.items())
 
 
-def undelimit_mapping(mapping_as_sequence, delimiter=':'):
+def undelimit_mapping(
+        mapping_as_sequence, delimiter=':', reverse_mapping=False):
     '''
     Takes a squence of strings of the form:
       ['a:b', 'c:d']
     and translates it into the form:
       {'a': 'b', 'c': 'd'}
 
+    :paremeter bool reverse_mapping: specifies whether 'a:b' -> {'a': 'b'} or
+        {'b': 'a'}
+
     This is useful because of how decking specified mappings for things like
     ports.
     '''
-    return dict(item.split(delimiter, 1) for item in mapping_as_sequence)
+    generator = (item.split(delimiter, 1) for item in mapping_as_sequence)
+    if reverse_mapping:
+        return {v: k for k, v in generator}
+    else:
+        return dict(generator)
 
 
 def consume_stream(stream):

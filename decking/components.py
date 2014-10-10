@@ -1,8 +1,6 @@
 from functools import wraps
 import sys
-import time
 import docker
-import signal
 import threading
 try:
     from queue import Queue
@@ -11,6 +9,8 @@ except ImportError:
 
 from decking.terminal import term
 from decking.util import consume_stream, iter_dependencies, delimit_mapping
+
+END_OF_STREAM = object()
 
 
 class Named(object):
@@ -226,13 +226,13 @@ class Container(ContainerData):
         stdout_stream = self._docker_client.attach(self.name, stream=True)
         thread = threading.Thread(
             target=self._log_consumer, args=(stdout_stream, log_queue))
-        thread.daemon = True
         thread.start()
         return thread
 
     def _log_consumer(self, stream, log_queue):
         for line in stream:
             log_queue.put((self.name, line))
+        log_queue.put((self.name, END_OF_STREAM))
 
 
 class Group(Named):
@@ -255,6 +255,7 @@ class Cluster(Named):
         self._docker_client = docker_client
         self.containers = containers
         self.group = group
+        self._attached = set()
 
     def __iter__(self):
         return iter_dependencies(self.containers, lambda c: c.dependencies)
@@ -283,28 +284,24 @@ class Cluster(Named):
         for container in reversed(tuple(self)):
             container.remove()
 
-    @staticmethod
-    def _display_logs(log_queue):
+    def _display_logs(self, log_queue, term):
         current_container = None, None
-        while True:
+        while self._attached:
             container, line = log_queue.get()
-            if container != current_container:
-                current_container = container
-                term.print_step(container)
-            term.print_line(line.strip())
-            time.sleep(0.1)
+            if line is END_OF_STREAM:
+                self._attached.remove(container)
+                term.print_warning('{}: detached'.format(container))
+            else:
+                if container != current_container:
+                    current_container = container
+                    term.print_step(container)
+                term.print_line(line.strip())
+        term.print_warning('All containers detached')
 
-    def attach(self):
-        # FIXME: this feels like it should be at the application level...
-        signal.signal(signal.SIGINT, lambda signal, frame: sys.exit())
+    def attach(self, term=term):
         threads = []
         log_queue = Queue()
         for container in self:
+            self._attached.add(container.name)
             threads.append(container.attach(log_queue))
-
-        thread = threading.Thread(
-            target=self._display_logs, args=(log_queue,))
-        thread.daemon = True
-        thread.start()
-        threads.append(thread)
-        signal.pause()
+        self._display_logs(log_queue, term)

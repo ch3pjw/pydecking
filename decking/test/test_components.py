@@ -65,6 +65,8 @@ class TestContainer(BaseTest):
         self.container.create(group)
         expected_env = Container._format_environment({
             'moose': 'overridden', 'pants': 'extra', 'more': 'extra extra'})
+        expected_env = {
+            'moose': 'overridden', 'pants': 'extra', 'more': 'extra extra'}
         self.docker_client.create_container.assert_called_once_with(
             'image_name', name='container_name',
             environment=expected_env, ports=['1111'])

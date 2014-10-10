@@ -1,5 +1,4 @@
 from functools import wraps
-import sys
 import docker
 import threading
 try:
@@ -8,7 +7,7 @@ except ImportError:
     from Queue import Queue
 
 from decking.terminal import term
-from decking.util import consume_stream, iter_dependencies, delimit_mapping
+from decking.util import consume_stream, iter_dependencies
 
 END_OF_STREAM = object()
 
@@ -146,9 +145,8 @@ class Container(ContainerData):
                 self.name, self.id))
         else:
             term.print_step('creating container {!r}...'.format(self.name))
-            environment = delimit_mapping(
-                self._get_group_modified_dict_attribute(group, 'environment'),
-                '=')
+            environment = self._get_group_modified_dict_attribute(
+                group, 'environment')
             self._docker_container_info = self._docker_client.create_container(
                 self.image.name,
                 name=self.name,

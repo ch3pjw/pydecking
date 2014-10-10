@@ -176,9 +176,9 @@ class Container(ContainerData):
             privileged=self.privileged,
             network_mode=self.net)
 
-    def run(self):
-        self.create()
-        self.start()
+    def run(self, group=None):
+        self.create(group)
+        self.start(group)
 
     @assert_created
     def stop(self):
@@ -259,15 +259,15 @@ class Cluster(Named):
 
     def create(self):
         for container in self:
-            container.create()
+            container.create(self.group)
 
     def start(self):
         for container in self:
-            container.start()
+            container.start(self.group)
 
     def run(self):
         for container in self:
-            container.run()
+            container.run(self.group)
 
     def status(self):
         for container in self:

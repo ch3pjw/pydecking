@@ -224,6 +224,7 @@ class Container(ContainerData):
         stdout_stream = self._docker_client.attach(self.name, stream=True)
         thread = threading.Thread(
             target=self._log_consumer, args=(stdout_stream, log_queue))
+        thread.daemon = True
         thread.start()
         return thread
 
@@ -284,7 +285,7 @@ class Cluster(Named):
     def _display_logs(self, attached, log_queue, term):
         current_container = None, None
         while attached:
-            container, line = log_queue.get()
+            container, line = log_queue.get(timeout=60 * 60)
             if line is END_OF_STREAM:
                 attached.remove(container)
                 term.print_warning('{}: detached'.format(container))

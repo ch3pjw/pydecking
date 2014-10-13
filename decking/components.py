@@ -136,9 +136,9 @@ class Container(ContainerData):
         value = dict(getattr(self, attr_name))
         if group:
             value.update(getattr(group.options, attr_name))
-            for name, container in group.per_container_specs.items():
-                if name == self.name:
-                    value.update(getattr(container, attr_name))
+            for container, group_spec in group.per_container_specs.items():
+                if container is self:
+                    value.update(getattr(group_spec, attr_name))
         return value
 
     def create(self, group=None):

@@ -32,9 +32,9 @@ class BaseTest(TestCase):
                 'unimportant', environment={
                     'moose': 'overridden', 'pants': 'extra'}),
             per_container_specs={
-                'alice': ContainerData(
+                self.dependency: ContainerData(
                     'never used', environment={'moose': 'llama'}),
-                'container_name': ContainerData(
+                self.container: ContainerData(
                     'never used', environment={'more': 'extra extra'},
                     volume_bindings={'/tmp/': '/normalised/local/bar/'})})
 

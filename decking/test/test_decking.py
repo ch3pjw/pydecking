@@ -35,7 +35,7 @@ class TestDecking(TestCase):
         decking = Decking(self.decking_config, base_path, self.docker_client)
         # Images:
         for name in 'alice', 'bob':
-            expected = os.path.join(base_path, name, 'Dockerfile')
+            expected = os.path.join(base_path, name)
             self.assertEqual(decking.images['repo/' + name].path, expected)
         # Containers:
         cont = decking.containers['alice']

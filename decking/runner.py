@@ -31,8 +31,8 @@ class Decking(object):
     def _make_images(self, config_data):
         image_specs = {}
         for name, path in config_data.items():
-            path = os.path.join(self._normalise_path(path), 'Dockerfile')
-            image_specs[name] = Image(self.client, name, path)
+            image_specs[name] = Image(
+                self.client, name, self._normalise_path(path))
         return image_specs
 
     @staticmethod

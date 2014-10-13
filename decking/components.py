@@ -1,4 +1,5 @@
 from functools import wraps
+import os
 import docker
 import threading
 try:
@@ -30,7 +31,8 @@ class Image(Named):
     @property
     def dependencies(self):
         if self._dependencies is None:
-            self._dependencies = self._parse_dockerfile(self.path)
+            path = os.path.join(self.path, 'Dockerfile')
+            self._dependencies = self._parse_dockerfile(path)
         return self._dependencies
 
     @staticmethod

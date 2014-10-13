@@ -45,10 +45,10 @@ class TestImage(BaseTest):
         self.stream = [
             json.dumps({'stream': 'stream\nof\narbitrary\nwords'})] * 2
 
-    def test_parse_dockerfile(self):
-        path = os.path.join(here, 'data', 'alice', 'Dockerfile')
-        result = Image._parse_dockerfile(path)
-        self.assertEqual(result, ['ubuntu'])
+    def test_dependencies(self):
+        path = os.path.join(here, 'data', 'alice')
+        self.image.path = path
+        self.assertEqual(self.image.dependencies, ['ubuntu'])
 
     def test_caching_dependencies(self):
         self.image._parse_dockerfile = lambda path: ['some dep']

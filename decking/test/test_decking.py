@@ -84,19 +84,19 @@ class TestDecking(TestCase):
         self.assertTrue(decking.containers['bob1'].created)
         self.assertFalse(decking.containers['bob2'].created)
 
-    def test_build(self):
+    def image_operation_helper(self, method_name, *args, **kwargs):
         base_path = os.path.join(here, 'data')
         decking = Decking(
             self.decking_config, base_path, self.docker_client)
-        built = decking.build('all')
+        method = getattr(decking, method_name)
         def expected(*names):
             return [decking.images['repo/' + name] for name in names]
-        self.assertItemsEqual(built, expected('unused', 'alice', 'bob'))
-        built = decking.build('vanilla')
-        self.assertEqual(built, expected('alice', 'bob'))
-        built = decking.build('repo/bob')
-        self.assertEqual(built, expected('bob'))
-        self.assertRaisesRegexp(ValueError, 'tosh', decking.build, 'tosh')
+        processed = method('all', *args, **kwargs)
+        self.assertItemsEqual(processed, expected('unused', 'alice', 'bob'))
+        processed = method('vanilla', *args, **kwargs)
+        self.assertEqual(processed, expected('alice', 'bob'))
+        processed = method('repo/bob', *args, **kwargs)
+        self.assertEqual(processed, expected('bob'))
 
 
 @patch('time.sleep', lambda *a: None)
@@ -208,6 +208,8 @@ class OldTestDecking(TestCase):
         runner = Decking(
             self.decking_config, self.mock_docker_client, terminal=Mock())
         self.assertRaisesRegexp(
+            ValueError, 'tosh', method, 'tosh', *args, **kwargs)
+        return decking
             RuntimeError, 'dependencies', runner.start_cluster, 'dojo')
 
     def _test_pull(self, registry, allow_insecure):
@@ -232,6 +234,8 @@ class OldTestDecking(TestCase):
             registry=registry,
             allow_insecure=allow_insecure)
 
+    def test_build(self):
+        self.image_operation_helper('build')
         self.mock_docker_client.pull.assert_called_once_with(
             remote_image_path, insecure_registry=allow_insecure, stream=True)
         if registry:
@@ -243,8 +247,9 @@ class OldTestDecking(TestCase):
             self.assertFalse(self.mock_docker_client.tag.called)
             self.assertFalse(self.mock_docker_client.remove_image.called)
 
-    def test_pull_repo(self):
-        self._test_pull('foobar', False)
+    def test_push(self):
+        decking = self.image_operation_helper('push', 'some-repo.domain.com')
+        self.assertRaises(TypeError, decking.push)
 
-    def test_pull_no_repo(self):
-        self._test_pull(None, False)
+    def test_pull(self):
+        self.image_operation_helper('pull')

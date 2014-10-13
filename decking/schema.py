@@ -1,6 +1,12 @@
 from collections import Mapping, Sequence
 from cerberus import Validator, errors
 
+try:
+    string_type = basestring
+except NameError:
+    # Python 3
+    string_type = str
+
 
 class ConfigValidator(Validator):
     _cluster_config_dict_schema = {
@@ -11,7 +17,7 @@ class ConfigValidator(Validator):
     def _validate_type_cluster(self, field, value):
         if isinstance(value, Sequence):
             for name in value:
-                if not isinstance(name, basestring):
+                if not isinstance(name, string_type):
                     self._error(
                         field, 'cluster definition list item {} is not a '
                         'container name'.format(name))

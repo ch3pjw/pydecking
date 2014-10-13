@@ -11,6 +11,14 @@ here = os.path.dirname(__file__)
 
 
 class TestDecking(TestCase):
+    def assertCountEqual(self, *args, **kwargs):
+        try:
+            method = super(TestDecking, self).assertCountEqual
+        except AttributeError:
+            # Python <3
+            method = super(TestDecking, self).assertItemsEqual
+        return method(*args, **kwargs)
+
     @classmethod
     def setUpClass(cls):
         path = os.path.join(here, 'data', 'example_decking_file.json')
@@ -92,7 +100,7 @@ class TestDecking(TestCase):
         def expected(*names):
             return [decking.images['repo/' + name] for name in names]
         processed = method('all', *args, **kwargs)
-        self.assertItemsEqual(processed, expected('unused', 'alice', 'bob'))
+        self.assertCountEqual(processed, expected('unused', 'alice', 'bob'))
         processed = method('vanilla', *args, **kwargs)
         self.assertEqual(processed, expected('alice', 'bob'))
         processed = method('repo/bob', *args, **kwargs)

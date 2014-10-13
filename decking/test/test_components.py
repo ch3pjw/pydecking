@@ -110,7 +110,7 @@ class TestContainer(BaseTest):
             'moose': 'overridden', 'pants': 'extra', 'more': 'extra extra'}
         self.docker_client.create_container.assert_called_once_with(
             'image_name', name='container_name',
-            environment=expected_env, ports=['1111'])
+            environment=expected_env, ports={'1111': None}.keys())
 
     def test_create_with_group(self):
         self.container.create(self.group)
@@ -167,8 +167,10 @@ class TestContainer(BaseTest):
 
     def test_remove(self):
         self.fake_container_create()
+        response = Mock()
+        response.status_code = 200
         self.docker_client.remove_container.side_effect = (
-            docker.errors.APIError("Arg, things broke", response=Mock()))
+            docker.errors.APIError("Arg, things broke", response=response))
         self.container.remove()
         self.assertTrue(self.docker_client.remove_container.called)
 

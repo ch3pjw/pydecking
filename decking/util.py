@@ -3,25 +3,17 @@ import json
 from decking.terminal import term
 
 
-def undelimit_mapping(
-        mapping_as_sequence, delimiter=':', reverse_mapping=False):
+def undelimit_mapping(mapping_as_sequence, delimiter=':'):
     '''
     Takes a squence of strings of the form:
       ['a:b', 'c:d']
     and translates it into the form:
       {'a': 'b', 'c': 'd'}
 
-    :paremeter bool reverse_mapping: specifies whether 'a:b' -> {'a': 'b'} or
-        {'b': 'a'}
-
     This is useful because of how decking specified mappings for things like
     ports.
     '''
-    generator = (item.split(delimiter, 1) for item in mapping_as_sequence)
-    if reverse_mapping:
-        return {v: k for k, v in generator}
-    else:
-        return dict(generator)
+    return dict(item.split(delimiter, 1) for item in mapping_as_sequence)
 
 
 def consume_stream(stream):

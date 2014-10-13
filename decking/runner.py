@@ -58,10 +58,9 @@ class Decking(object):
 
     def _process_container_config(self, container_config):
         port_bindings = undelimit_mapping(container_config.get('port', []))
-        volume_bindings = undelimit_mapping(
-            container_config.get('mount', []), reverse_mapping=True)
+        volume_bindings = undelimit_mapping(container_config.get('mount', []))
         volume_bindings = {
-            k: self._normalise_path(v) for k, v in volume_bindings.items()}
+            self._normalise_path(k): v for k, v in volume_bindings.items()}
         environment = undelimit_mapping(container_config.get('env', []), '=')
         return port_bindings, volume_bindings, environment
 

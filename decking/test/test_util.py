@@ -11,9 +11,6 @@ class TestUtil(TestCase):
         self.assertEqual(
             undelimit_mapping(['a=b', 'c=d'], delimiter='='),
             {'a': 'b', 'c': 'd'})
-        self.assertEqual(
-            undelimit_mapping(['a:b', 'a:c'], reverse_mapping=True),
-            {'b': 'a', 'c': 'a'})
 
     def test_iter_dependencies(self):
         data = {

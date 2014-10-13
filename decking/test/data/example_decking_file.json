@@ -1,7 +1,8 @@
 {
     "images": {
         "repo/alice": "./alice",
-        "repo/bob": "./bob"
+        "repo/bob": "./bob",
+        "repo/unused": "./boring"
     },
     "containers": {
         "bob1": {
@@ -37,7 +38,8 @@
             },
             "containers": {
                 "bob2": {
-                    "net": "host"
+                    "net": "host",
+                    "privileged": true
                 }
             }
         }

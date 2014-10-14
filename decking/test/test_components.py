@@ -6,7 +6,8 @@ import json
 import docker
 
 from decking.terminal import Terminal
-from decking.components import Image, Container, ContainerData, Group, Cluster
+from decking.components import (
+    Image, Container, ContainerData, Group, Cluster, ContainerNotCreatedError)
 
 here = os.path.dirname(__file__)
 
@@ -95,7 +96,8 @@ class TestContainer(BaseTest):
         }
 
     def test_create(self):
-        with self.assertRaisesRegexp(RuntimeError, 'not created'):
+        with self.assertRaisesRegexp(
+                ContainerNotCreatedError, 'container_name'):
             self.container.id
         self.docker_client.create_container.return_value = {'Id': '1234'}
         self.container.create()

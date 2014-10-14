@@ -13,6 +13,10 @@ from decking.util import consume_stream, iter_dependencies
 END_OF_STREAM = object()
 
 
+class ContainerNotCreatedError(RuntimeError):
+    pass
+
+
 class Named(object):
     def __init__(self, name):
         self.name = name
@@ -104,8 +108,7 @@ def assert_created(method):
     @wraps(method)
     def wrapped_method(self, *args, **kwargs):
         if not self.created:
-            raise RuntimeError("Docker container {!r} not created!".format(
-                self.name))
+            raise ContainerNotCreatedError(self.name)
         return method(self, *args, **kwargs)
     return wrapped_method
 

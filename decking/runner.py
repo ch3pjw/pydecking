@@ -3,7 +3,9 @@ import os
 from collections import Sequence
 
 from decking.util import undelimit_mapping, iter_dependencies
-from decking.components import Image, ContainerData, Container, Cluster, Group
+from decking.components import (
+    Image, ContainerData, Container, Cluster, Group, ContainerNotCreatedError)
+from decking.terminal import term
 
 
 class Decking(object):
@@ -170,7 +172,10 @@ class Decking(object):
         return self.clusters[name].run()
 
     def stop(self, name):
-        return self.clusters[name].stop()
+        try:
+            return self.clusters[name].stop()
+        except ContainerNotCreatedError:
+            term.print_warning('Containers were not present to be stopped')
 
     def status(self, name):
         return self.clusters[name].status()
@@ -180,7 +185,10 @@ class Decking(object):
         self.clusters[name].restart()
 
     def remove(self, name):
-        return self.clusters[name].remove()
+        try:
+            return self.clusters[name].remove()
+        except ContainerNotCreatedError:
+            term.print_warning('Containers were not present to be removed')
 
     def attach(self, name):
         return self.clusters[name].attach()

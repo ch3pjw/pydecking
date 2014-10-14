@@ -130,9 +130,9 @@ def main():
             image = opts['WHAT']
             registry = opts.get('REGISTRY')
             if opts['push']:
-                runner.push_thing(image, registry, opts['--allow-insecure'])
+                runner.push(image, registry, opts['--allow-insecure'])
             elif opts['pull']:
-                runner.pull_thing(image, registry, opts['--allow-insecure'])
+                runner.pull(image, registry, opts['--allow-insecure'])
         else:
             command, cluster = opts['OPERATION'], opts['CLUSTER']
             if command in commands:

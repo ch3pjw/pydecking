@@ -276,13 +276,28 @@ class Cluster(Named):
         for container in self:
             container.status()
 
+    @staticmethod
+    def _raise_first_error(containers, method_name, *args, **kwargs):
+        processed = []
+        errors = []
+        for container in containers:
+            func = getattr(container, method_name)
+            try:
+                func(*args, **kwargs)
+            except Exception as e:
+                errors.append(e)
+            else:
+                processed.append(container)
+        if errors:
+            raise errors[0]
+        else:
+            return processed
+
     def stop(self):
-        for container in reversed(tuple(self)):
-            container.stop()
+        return self._raise_first_error(reversed(tuple(self)), 'stop')
 
     def remove(self):
-        for container in reversed(tuple(self)):
-            container.remove()
+        return self._raise_first_error(reversed(tuple(self)), 'remove')
 
     def _display_logs(self, attached, log_queue, term):
         current_container = None, None

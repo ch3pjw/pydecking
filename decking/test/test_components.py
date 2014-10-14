@@ -1,5 +1,5 @@
 from unittest import TestCase
-from mock import Mock, MagicMock, call
+from mock import Mock, MagicMock, call, patch
 
 import os
 import json
@@ -189,3 +189,18 @@ class TestCluster(BaseTest):
             call('{}: detached'.format(self.container.name)),
             call('{}: detached'.format(self.dependency.name)),
             call('All containers detached')], any_order=True)
+
+    def test_stop(self):
+        patch_dep = patch.object(self.dependency, 'stop', Mock())
+        patch_cont = patch.object(self.container, 'stop', Mock())
+        with patch_dep, patch_cont:
+            processed = self.cluster.stop()
+            self.assertEqual(processed, [self.container, self.dependency])
+
+    def test_stop_single_failure_processing_continues(self):
+        patch_dep = patch.object(
+            self.dependency, 'stop', Mock(side_effect=KeyError('for test')))
+        patch_cont = patch.object(self.container, 'stop', Mock())
+        with patch_dep, patch_cont:
+            self.assertRaises(KeyError, self.cluster.stop)
+            self.assertTrue(self.container.stop.called)

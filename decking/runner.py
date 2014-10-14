@@ -148,16 +148,17 @@ class Decking(object):
                 images, images_dependency_names.__getitem__):
             yield images[image_name]
 
-    def _do_per_image(self, name, method_name, *args, **kwargs):
+    def _do_per_image(self, images, method_name, *args, **kwargs):
         processed = []
-        for image in self._iter_images_by_dependency(
-                self._get_images_by_name(name)):
+        for image in images:
             getattr(image, method_name)(*args, **kwargs)
             processed.append(image)
         return processed
 
     def build(self, name):
-        return self._do_per_image(name, 'build')
+        images = self._iter_images_by_dependency(
+            self._get_images_by_name(name))
+        return self._do_per_image(images, 'build')
 
     def create(self, name):
         return self.clusters[name].create()
@@ -185,7 +186,9 @@ class Decking(object):
         return self.clusters[name].attach()
 
     def push(self, name, *args, **kwargs):
-        return self._do_per_image(name, 'push', *args, **kwargs)
+        images = self._get_images_by_name(name).values()
+        return self._do_per_image(images, 'push', *args, **kwargs)
 
     def pull(self, name, *args, **kwargs):
-        return self._do_per_image(name, 'pull', *args, **kwargs)
+        images = self._get_images_by_name(name).values()
+        return self._do_per_image(images, 'pull', *args, **kwargs)

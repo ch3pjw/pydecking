@@ -92,7 +92,7 @@ class TestDecking(TestCase):
         self.assertTrue(decking.containers['bob1'].created)
         self.assertFalse(decking.containers['bob2'].created)
 
-    def image_operation_helper(self, method_name, *args, **kwargs):
+    def image_operation_helper(self, method_name, ordered, *args, **kwargs):
         base_path = os.path.join(here, 'data')
         decking = Decking(
             self.decking_config, base_path, self.docker_client)
@@ -102,7 +102,10 @@ class TestDecking(TestCase):
         processed = method('all', *args, **kwargs)
         self.assertCountEqual(processed, expected('unused', 'alice', 'bob'))
         processed = method('vanilla', *args, **kwargs)
-        self.assertEqual(processed, expected('alice', 'bob'))
+        if ordered:
+            self.assertEqual(processed, expected('alice', 'bob'))
+        else:
+            self.assertCountEqual(processed, expected('alice', 'bob'))
         processed = method('repo/bob', *args, **kwargs)
         self.assertEqual(processed, expected('bob'))
         self.assertRaisesRegexp(
@@ -110,11 +113,12 @@ class TestDecking(TestCase):
         return decking
 
     def test_build(self):
-        self.image_operation_helper('build')
+        self.image_operation_helper('build', ordered=True)
 
     def test_push(self):
-        decking = self.image_operation_helper('push', 'some-repo.domain.com')
+        decking = self.image_operation_helper(
+            'push', False, 'some-repo.domain.com')
         self.assertRaises(TypeError, decking.push)
 
     def test_pull(self):
-        self.image_operation_helper('pull')
+        self.image_operation_helper('pull', ordered=False)

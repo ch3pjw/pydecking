@@ -20,7 +20,8 @@ class BaseTest(TestCase):
             self.docker_client, 'dependency_name', self.image)
         self.container = Container(
             self.docker_client, 'container_name', self.image,
-            port_bindings={'1111': '2222'}, environment={'moose': 'pants'},
+            port_bindings={'1111': '2222'},
+            environment={'moose': 'pants', 'dynamic': '-'},
             net='host', privileged=True,
             dependencies={self.dependency: 'dependency_alias'},
             volume_bindings={'/tmp/': '/normalised/local/foo/'})
@@ -31,12 +32,14 @@ class BaseTest(TestCase):
             name='fluffy',
             options=ContainerData(
                 'unimportant', environment={
-                    'moose': 'overridden', 'pants': 'extra'}),
+                    'moose': 'overridden', 'pants': 'extra',
+                    'dynamic_extra': '-'}),
             per_container_specs={
                 self.dependency: ContainerData(
                     'never used', environment={'moose': 'llama'}),
                 self.container: ContainerData(
-                    'never used', environment={'more': 'extra extra'},
+                    'never used', environment={
+                        'more': 'extra extra', 'dynamic_missing': '-'},
                     volume_bindings={'/tmp/': '/normalised/local/bar/'})})
 
 
@@ -85,6 +88,11 @@ class TestImage(BaseTest):
             stream=True)
 
 
+environ_patch = lambda: patch(
+    'decking.components.os.environ',
+    {'dynamic': 'great', 'dynamic_extra': 'success'})
+
+
 class TestContainer(BaseTest):
     def fake_container_create(self):
         self.container._docker_container_info = {
@@ -109,11 +117,14 @@ class TestContainer(BaseTest):
 
     def assert_docker_create_with_group(self):
         expected_env = {
-            'moose': 'overridden', 'pants': 'extra', 'more': 'extra extra'}
+            'moose': 'overridden', 'pants': 'extra', 'more': 'extra extra',
+            'dynamic': 'great', 'dynamic_extra': 'success',
+            'dynamic_missing': ''}
         self.docker_client.create_container.assert_called_once_with(
             'image_name', name='container_name',
             environment=expected_env, ports={'1111': None}.keys())
 
+    @environ_patch()
     def test_create_with_group(self):
         self.container.create(self.group)
         self.assert_docker_create_with_group()
@@ -132,6 +143,7 @@ class TestContainer(BaseTest):
         self.container.start()
         self.assert_docker_start()
 
+    @environ_patch()
     def assert_docker_start_with_group(self):
         self.docker_client.start.assert_called_once_with(
             self.container._docker_container_info,
@@ -150,6 +162,7 @@ class TestContainer(BaseTest):
         self.container.run()
         self.assert_docker_start()
 
+    @environ_patch()
     def test_run_with_group(self):
         self.container.run(self.group)
         self.assert_docker_create_with_group()

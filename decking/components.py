@@ -144,6 +144,26 @@ class Container(ContainerData):
                     value.update(getattr(group_spec, attr_name))
         return value
 
+    @staticmethod
+    def _update_env_from_local_env(env):
+        '''Finds any environment variables with the special value '-' and looks
+        them up from the host's environment, rather than trying to use a
+        hard-coded value.
+        '''
+        new_env = {}
+        for k, v in env.items():
+            if v == '-':
+                if k not in os.environ:
+                    term.print_warning(
+                        "Your localhost is missing dynamic environment "
+                        "variable {!r}".format(k))
+                    new_env[k] = ''
+                else:
+                    new_env[k] = os.environ[k]
+            else:
+                new_env[k] = v
+        return new_env
+
     def create(self, group=None):
         if self.created:
             term.print_step('{!r} is already created ({})'.format(
@@ -152,6 +172,7 @@ class Container(ContainerData):
             term.print_step('creating container {!r}...'.format(self.name))
             environment = self._get_group_modified_dict_attribute(
                 group, 'environment')
+            environment = self._update_env_from_local_env(environment)
             self._docker_container_info = self._docker_client.create_container(
                 self.image.name,
                 name=self.name,

@@ -2,6 +2,9 @@ from __future__ import print_function
 
 import blessings
 
+UP = '\x1b[1A'
+ERASE_LINE = '\x1b[2K'
+
 
 class Terminal(blessings.Terminal):
     def print_step(self, title, *lines):
@@ -12,6 +15,10 @@ class Terminal(blessings.Terminal):
     @staticmethod
     def print_line(*line):
         print("      ", *line)
+
+    @staticmethod
+    def replace_line(*line):
+        print("\r{}{}      ".format(UP, ERASE_LINE), *line)
 
     def print_error_line(self, *line):
         print(self.red(' !    '), *line)

@@ -82,7 +82,7 @@ class Image(Named):
         consume_stream(stream)
 
         if remote_image_name != self.name:
-            self._docker_client.tag(remote_image_name, self.name)
+            self._docker_client.tag(remote_image_name, self.name, force=True)
             self._docker_client.remove_image(remote_image_name)
 
 

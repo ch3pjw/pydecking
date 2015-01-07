@@ -68,7 +68,7 @@ class TestImage(BaseTest):
         self.docker_client.build.return_value = self.stream
         self.image.build()
         self.docker_client.build.assert_called_once_with(
-            'some/path', tag='image_name', rm=True)
+            'some/path', tag='image_name', forcerm=True)
 
     def test_push(self):
         self.docker_client.push.return_value = self.stream

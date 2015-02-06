@@ -55,7 +55,7 @@ class Image(Named):
     def build(self):
         term.print_step('building image {!r}...'.format(self.name))
         stream = self._docker_client.build(
-            self.path, tag=self.name, forcerm=True)
+            self.path, tag=self.name, rm=True, forcerm=True)
         consume_stream(stream)
 
     def push(self, registry, allow_insecure=False):

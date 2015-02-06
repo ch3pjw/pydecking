@@ -65,9 +65,10 @@ setup(
         'cerberus'
     ),
     extras_require={
-        'dev': (
+        'test': (
             'nose',
             'coverage',
+            'mock',
         ),
     },
     entry_points={

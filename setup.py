@@ -62,7 +62,7 @@ setup(
         'docker-py>=0.5.0',
         'docopt',
         'blessings',
-        'cerberus'
+        'cerberus<0.9',
     ),
     extras_require={
         'test': (

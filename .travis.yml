@@ -4,3 +4,4 @@ python:
   - "3.3"
 install: pip install -e .[dev]
 script: nosetests --with-coverage --cover-package=decking
+sudo: false

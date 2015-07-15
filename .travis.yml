@@ -3,6 +3,6 @@ python:
   - "2.7"
   - "3.3"
   - "3.4"
-install: pip install -e .[dev]
+install: pip install -e .[test]
 script: nosetests --with-coverage --cover-package=decking
 sudo: false

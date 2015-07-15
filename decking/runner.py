@@ -18,7 +18,7 @@ class Decking(object):
     def __init__(self, decking_config, base_path='', docker_client=None):
         self._base_path = base_path
         self.client = docker_client or docker.Client(
-            base_url=os.environ.get('DOCKER_HOST'), version='1.10')
+            base_url=os.environ.get('DOCKER_HOST'), version='1.19')
         self.images = self._make_images(decking_config['images'])
         self.containers = self._make_containers(decking_config['containers'])
         self.groups = self._make_groups(decking_config.get('groups', {}))

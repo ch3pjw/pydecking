@@ -2,6 +2,7 @@ from unittest import TestCase
 from mock import Mock, MagicMock, call, patch
 
 import os
+import sys
 import json
 import docker
 
@@ -48,6 +49,8 @@ class TestImage(BaseTest):
         super(TestImage, self).setUp()
         self.stream = [
             json.dumps({'stream': 'stream\nof\narbitrary\nwords'})] * 2
+        if sys.version_info.major > 2:
+            self.stream = [s.encode('utf-8') for s in self.stream]
 
     def test_dependencies(self):
         path = os.path.join(here, 'data', 'alice')

@@ -19,7 +19,7 @@ def undelimit_mapping(mapping_as_sequence, delimiter=':'):
 def consume_stream(stream):
     prev_status_id = None
     for item in stream:
-        item = json.loads(item)
+        item = json.loads(item.decode('utf-8'))
         if 'stream' in item:
             for line in item['stream'].strip().splitlines():
                 term.print_line(line)

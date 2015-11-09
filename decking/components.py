@@ -178,7 +178,7 @@ class Container(ContainerData):
                 self.image.name,
                 name=self.name,
                 environment=environment,
-                ports=self.port_bindings.keys())
+                ports=list(self.port_bindings.keys()))
             term.print_line('({})'.format(self.id))
 
     @staticmethod

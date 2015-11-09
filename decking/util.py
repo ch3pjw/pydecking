@@ -38,7 +38,7 @@ def consume_stream(stream):
             else:
                 msg += ' ' + ' '.join(
                     '{}: {}'.format(k, v)
-                    for k, v in item.iteritems()
+                    for k, v in item.items()
                     if v)
             call(msg)
             prev_status_id = status_id
